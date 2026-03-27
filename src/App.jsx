@@ -4,6 +4,8 @@ import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
 import Login from './Pages/Login';
 import Register from './Pages/Register';
 import Dashboard from './Pages/Dashboard';
+import "./App.css";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 function App() {
     return (
@@ -17,16 +19,14 @@ function App() {
 
             {/* 2. تعريف المسارات (Routes) */}
             <div style={{ padding: '20px' }}>
-                <Routes>
-                    {/* الصفحة الرئيسية تفتح الـ Login */}
-                    <Route path="/" element={<Login />} />
+               <Routes>
+  <Route path="/" element={<Login />} />
+  <Route path="/register" element={<Register />} />
 
-                    {/* رابط /register يفتح صفحة التسجيل */}
-                    <Route path="/register" element={<Register />} />
-
-                    {/* رابط /dashboard يفتح لوحة التحكم */}
-                    <Route path="/dashboard" element={<Dashboard />} />
-                </Routes>
+  <Route element={<ProtectedRoute />}>
+    <Route path="/dashboard" element={<Dashboard />} />
+  </Route>
+</Routes>
             </div>
         </BrowserRouter>
     );
