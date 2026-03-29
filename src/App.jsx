@@ -1,9 +1,9 @@
 import { BrowserRouter, Routes, Route, Link, useLocation } from "react-router-dom";
 import "./App.css";
 
-import Login from "./Pages/Login";
-import Register from "./Pages/Register";
-import Dashboard from "./Pages/Dashboard";
+import Login from "./Pages/Login/Login";
+import Register from "./Pages/Register/Register";
+import Dashboard from "./Pages/Dashboard/Dashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Footer from "./components/Footer";
 

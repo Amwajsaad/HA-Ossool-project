@@ -1,5 +1,5 @@
 import "./Dashboard.css";
-import Sidebar from "../components/sidebar";
+import Sidebar from "../../components/sidebar";
 import Chart from "react-apexcharts";
 
 const Dashboard = () => {
