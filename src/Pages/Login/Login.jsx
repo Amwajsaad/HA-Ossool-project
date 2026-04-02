@@ -1,100 +1,41 @@
-import "./Login.css";
-import { Link, useNavigate } from "react-router-dom";
-import { useState } from "react";
-import Input from "../../components/Input";
-import Button from "../../components/Button";
+import React from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { loginSchema } from './LoginSchema';
+import styles from './Login.module.css';
+import loginImage from '../../assets/login-image.JPG';
+import logo from '../../assets/logo.png';
 
 const Login = () => {
-  const navigate = useNavigate();
+  const { register, handleSubmit, formState: { errors } } = useForm({
+    resolver: zodResolver(loginSchema),
+  });
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-
-  const handleLogin = () => {
-    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-    if (!email || !password) {
-      setError("Please fill in all fields");
-      return;
-    }
-
-    if (!emailPattern.test(email)) {
-      setError("Please enter a valid email");
-      return;
-    }
-
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters");
-      return;
-    }
-
-    setError("");
-    localStorage.setItem("token", "123");
-    navigate("/dashboard");
-  };
+  const onSubmit = (data) => console.log(data);
 
   return (
-    <div className="auth-login">
-      <header className="auth-login__header">
-        <img src="/logo.png" alt="AH-OSSOOL" className="auth-login__logo" />
-      </header>
-
-      <main className="auth-login__main">
-        <section className="auth-login__card">
-          <h1 className="auth-login__title">Admin Login</h1>
-
-          <p className="auth-login__subtitle">
-            Welcome back! Please log in to continue to your account.
-          </p>
-
-          <Input
-            type="email"
-            placeholder="Enter your Email"
-            className="auth-login__input"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-
-          <Input
-            type="password"
-            placeholder="Enter your Password"
-            className="auth-login__input"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-
-          {error && <p className="auth-login__error">{error}</p>}
-
-          <label className="auth-login__check-row">
-            <input type="checkbox" className="auth-login__checkbox" />
-            <span className="auth-login__check-text">Keep me logged in</span>
-          </label>
-
-          <Button
-            text="Sign In"
-            onClick={handleLogin}
-            className="auth-login__primary-btn"
-          />
-
-          <Button
-            text="Sign In With Google"
-            className="auth-login__google-btn"
-          />
-
-          <p className="auth-login__bottom-text">
-            Need an account? <Link to="/register">Create one!</Link>
-          </p>
-        </section>
-
-        <section className="auth-login__image-card">
-          <img
-            src="/login-image.JPG"
-            alt="Login Illustration"
-            className="auth-login__image"
-          />
-        </section>
-      </main>
+    <div className={styles.loginPageWrapper}>
+      <div className={styles.loginContainer}>
+        <div className={styles.authCard}>
+          <div className={styles.formSection}>
+            <div className={styles.logoContainer}>
+              <img src={logo} alt="AH-OSSOOL" className={styles.logo} />
+            </div>
+            <h2>Admin Login</h2>
+            <p>Welcome back! Please log in to continue to your account.</p>
+            <form onSubmit={handleSubmit(onSubmit)}>
+              <input type="email" placeholder="Enter your Email" {...register('email')} className={styles.inputField} />
+              {errors.email && <span className={styles.errorText}>{errors.email.message}</span>}
+              <input type="password" placeholder="Enter your Password" {...register('password')} className={styles.inputField} />
+              {errors.password && <span className={styles.errorText}>{errors.password.message}</span>}
+              <button type="submit" className={styles.signInBtn}>Sign In</button>
+            </form>
+          </div>
+          <div className={styles.imageSection}>
+            <img src={loginImage} alt="Design" />
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
