@@ -1,0 +1,63 @@
+.settingsGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+}
+
+.cardTitle {
+  margin: 0 0 var(--space-4);
+  font-size: var(--font-size-lg);
+  color: var(--color-text);
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: var(--space-4);
+}
+
+.formGroup label {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.checkboxRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+  font-weight: 500;
+}
+
+.checkboxRow input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--color-primary);
+}
+
+.successMessage {
+  background: var(--color-success-bg);
+  color: var(--color-success-text);
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-4);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+}
+
+.fullWidthCard {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 900px) {
+  .settingsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .fullWidthCard {
+    grid-column: auto;
+  }
+}

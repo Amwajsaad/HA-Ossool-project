@@ -1,42 +1,120 @@
-import React from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { loginSchema } from './LoginSchema';
-import styles from './Login.module.css';
-import loginImage from '../../assets/login-image.JPG';
-import logo from '../../assets/logo.png';
+import React, { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { loginSchema } from "./LoginSchema";
+import AuthLayout from "../../components/AuthLayout/AuthLayout";
+import Input from "../../components/Input";
+import Button from "../../components/Button";
+import styles from "./Login.module.css";
 
 const Login = () => {
-  const { register, handleSubmit, formState: { errors } } = useForm({
+  const navigate = useNavigate();
+  const [loginError, setLoginError] = useState("");
+
+  const {
+    control,
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm({
     resolver: zodResolver(loginSchema),
+    mode: "all",
+    defaultValues: {
+      email: "",
+      password: "",
+      remember: false,
+    },
   });
 
-  const onSubmit = (data) => console.log(data);
+ const onSubmit = async (data) => {
+  setLoginError("");
+
+  const savedUser = JSON.parse(localStorage.getItem("registeredUser"));
+
+  if (!savedUser) {
+    setLoginError("No registered account found. Please create an account first.");
+    return;
+  }
+
+  if (
+    data.email !== savedUser.email ||
+    data.password !== savedUser.password
+  ) {
+    setLoginError("Invalid email or password.");
+    return;
+  }
+
+  localStorage.setItem("token", "admin-token");
+  localStorage.setItem("currentUser", JSON.stringify(savedUser));
+  navigate("/Home");
+};
 
   return (
-    <div className={styles.loginPageWrapper}>
-      <div className={styles.loginContainer}>
-        <div className={styles.authCard}>
-          <div className={styles.formSection}>
-            <div className={styles.logoContainer}>
-              <img src={logo} alt="AH-OSSOOL" className={styles.logo} />
-            </div>
-            <h2>Admin Login</h2>
-            <p>Welcome back! Please log in to continue to your account.</p>
-            <form onSubmit={handleSubmit(onSubmit)}>
-              <input type="email" placeholder="Enter your Email" {...register('email')} className={styles.inputField} />
-              {errors.email && <span className={styles.errorText}>{errors.email.message}</span>}
-              <input type="password" placeholder="Enter your Password" {...register('password')} className={styles.inputField} />
-              {errors.password && <span className={styles.errorText}>{errors.password.message}</span>}
-              <button type="submit" className={styles.signInBtn}>Sign In</button>
-            </form>
-          </div>
-          <div className={styles.imageSection}>
-            <img src={loginImage} alt="Design" />
-          </div>
-        </div>
-      </div>
-    </div>
+    <AuthLayout
+      title="Admin Login"
+      subtitle="Welcome back! Please log in to continue to your account."
+    >
+      <form onSubmit={handleSubmit(onSubmit)} className={styles.loginForm}>
+        <Controller
+          name="email"
+          control={control}
+          render={({ field }) => (
+            <Input
+              type="email"
+              placeholder="Enter your Email"
+              icon="@"
+              error={errors.email?.message}
+              className={styles.inputGroup}
+              {...field}
+            />
+          )}
+        />
+
+        <Controller
+          name="password"
+          control={control}
+          render={({ field }) => (
+            <Input
+              type="password"
+              placeholder="Enter your Password"
+              icon="⌁"
+              error={errors.password?.message}
+              className={styles.inputGroup}
+              {...field}
+            />
+          )}
+        />
+
+        <label className={styles.checkboxRow}>
+          <input type="checkbox" {...register("remember")} />
+          <span>Keep me logged in</span>
+        </label>
+
+        {loginError && <p className={styles.errorText}>{loginError}</p>}
+
+        <Button
+          type="submit"
+          loading={isSubmitting}
+          variant="primary"
+          className={styles.signInButton}
+        >
+          Sign In
+        </Button>
+
+        <Button
+          type="button"
+          variant="secondary"
+          className={styles.googleButton}
+        >
+          Sign In With Google
+        </Button>
+
+        <p className={styles.bottomText}>
+          Need an account? <Link to="/register">Create one!</Link>
+        </p>
+      </form>
+    </AuthLayout>
   );
 };
 

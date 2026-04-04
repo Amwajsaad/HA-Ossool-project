@@ -1,134 +1,45 @@
-.loginPageWrapper {
-  width: 100%;
-  background-color: #f1f1f1;
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
 }
 
-.loginContainer {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 60px 20px;
-  min-height: calc(100vh - 200px);
+.statTitle {
+  font-size: var(--font-size-sm);
+  color: var(--color-muted);
 }
 
-.authCard {
-  display: flex;
-  background: white;
-  border-radius: 30px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.03);
-  width: 100%;
-  max-width: 1100px;
-  overflow: hidden;
-}
-
-.formSection {
-  flex: 1;
-  padding: 60px 80px;
-  display: flex;
-  flex-direction: column;
-}
-
-.logoContainer {
-  margin-bottom: 30px;
-}
-
-.logo {
-  width: 180px;
-  height: auto;
-  display: block;
-}
-
-.formSection h2 {
-  font-size: 2.2rem;
-  font-weight: 800;
-  margin-bottom: 10px;
-  color: #111;
-}
-
-.formSection p {
-  color: #666;
-  margin-bottom: 35px;
-}
-
-.inputField {
-  width: 100%;
-  padding: 16px;
-  border: 1px solid #eee;
-  border-radius: 12px;
-  background-color: #f9f9f9;
-  font-size: 1rem;
-  margin-bottom: 15px;
-  box-sizing: border-box;
-}
-
-.rememberMe {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 25px;
-  font-size: 0.9rem;
-  color: #444;
-}
-
-.signInBtn {
-  width: 100%;
-  padding: 16px;
-  background-color: #bc2c2c;
-  color: white;
-  border: none;
-  border-radius: 12px;
-  font-size: 1.1rem;
+.statNumber {
+  font-size: 26px;
   font-weight: bold;
-  cursor: pointer;
-  margin-bottom: 15px;
+  margin-top: 6px;
 }
 
-.googleBtn {
-  width: 100%;
-  padding: 14px;
-  background-color: white;
-  color: #333;
-  border: 1px solid #ddd;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  cursor: pointer;
+.statSub {
+  font-size: var(--font-size-xs);
+  color: var(--color-muted);
+  margin-top: 4px;
 }
 
-.googleBtn img {
-  width: 20px;
+.chartsGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
 }
 
-.imageSection {
-  flex: 1.2;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  background-color: #fff;
+.cardTitle {
+  margin-bottom: var(--space-3);
+  font-size: var(--font-size-md);
+  font-weight: 600;
 }
 
-.imageSection img {
-  max-width: 85%;
-  height: auto;
-}
+@media (max-width: 900px) {
+  .statsGrid {
+    grid-template-columns: 1fr 1fr;
+  }
 
-.footerHint {
-  margin-top: 30px;
-  text-align: center;
-}
-
-.createLink {
-  color: #bc2c2c;
-  font-weight: bold;
-  cursor: pointer;
-}
-
-.errorText {
-  color: #bc2c2c;
-  font-size: 0.85rem;
-  margin-top: -10px;
-  margin-bottom: 10px;
-  display: block;
+  .chartsGrid {
+    grid-template-columns: 1fr;
+  }
 }

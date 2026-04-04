@@ -1,0 +1,61 @@
+.toolbar {
+  margin-bottom: var(--space-4);
+}
+
+.searchInput {
+  min-width: 280px;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+}
+
+.modalGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.formGroup label {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.modalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.inputError {
+  border: 1px solid var(--color-danger-text) !important;
+}
+
+.errorText {
+  color: var(--color-danger-text);
+  font-size: 12px;
+  margin-top: 2px;
+}
+
+@media (max-width: 768px) {
+  .searchInput {
+    min-width: 100%;
+  }
+
+  .modalGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .modalActions {
+    flex-direction: column;
+  }
+}
