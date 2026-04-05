@@ -27,28 +27,27 @@ const Login = () => {
     },
   });
 
- const onSubmit = async (data) => {
-  setLoginError("");
 
-  const savedUser = JSON.parse(localStorage.getItem("registeredUser"));
+  const onSubmit = async (data) => {
+    console.log(data) 
 
-  if (!savedUser) {
-    setLoginError("No registered account found. Please create an account first.");
-    return;
-  }
+    const savedUser = JSON.parse(localStorage.getItem("registeredUser"));
 
-  if (
-    data.email !== savedUser.email ||
-    data.password !== savedUser.password
-  ) {
-    setLoginError("Invalid email or password.");
-    return;
-  }
+    if (!savedUser) {
+      setLoginError("No registered account found. Please create an account first.");
+      return;
+    }
 
-  localStorage.setItem("token", "admin-token");
-  localStorage.setItem("currentUser", JSON.stringify(savedUser));
-  navigate("/Home");
-};
+    if (data.email !== savedUser.email || data.password !== savedUser.password) {
+      setLoginError("Invalid email or password.");
+      return;
+    }
+
+    // إذا نجح التحقق
+    localStorage.setItem("token", "admin-token");
+    localStorage.setItem("currentUser", JSON.stringify(savedUser));
+    navigate("/Home");
+  };
 
   return (
     <AuthLayout
@@ -116,6 +115,6 @@ const Login = () => {
       </form>
     </AuthLayout>
   );
-};
+}; 
 
 export default Login;
