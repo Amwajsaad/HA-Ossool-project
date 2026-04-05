@@ -321,6 +321,7 @@ const Maintenance = () => {
                 className={`ui-input ${errors.date ? styles.inputError : ""}`}
                 name="date"
                 placeholder="DD/MM/YYYY"
+                type="date"
                 value={form.date}
                 onChange={handleChange}
               />
