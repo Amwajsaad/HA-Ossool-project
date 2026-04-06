@@ -28,19 +28,21 @@ const Register = () => {
     },
   });
 
-const onSubmit = async (data) => {
-  const userData = {
-    name: data.name,
-    email: data.email,
-    password: data.password,
+  const onSubmit = async (data) => {
+    console.log("Register Data:", data);
+
+    const userData = {
+      name: data.name,
+      email: data.email,
+      password: data.password,
+    };
+
+    localStorage.setItem("registeredUser", JSON.stringify(userData));
+    localStorage.setItem("token", "admin-token");
+    localStorage.setItem("currentUser", JSON.stringify(userData));
+
+    navigate("/dashboard");
   };
-
-  localStorage.setItem("registeredUser", JSON.stringify(userData));
-  localStorage.setItem("token", "admin-token");
-  localStorage.setItem("currentUser", JSON.stringify(userData));
-
-  navigate("/dashboard");
-};
 
   return (
     <AuthLayout

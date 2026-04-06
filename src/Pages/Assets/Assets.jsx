@@ -1,6 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import styles from "./Assets.module.css";
 import Modal from "../../components/Modal/Modal";
+import { assetsSchema } from "./AssetsSchema";
 
 const initialAssets = [
   {
@@ -21,16 +24,10 @@ const initialAssets = [
 
 const STORAGE_KEY = "assets_data";
 
-const emptyForm = {
+const defaultValues = {
   name: "",
   location: "",
   status: "Active",
-  lastMaintenance: "",
-};
-
-const emptyErrors = {
-  name: "",
-  location: "",
   lastMaintenance: "",
 };
 
@@ -43,8 +40,17 @@ const Assets = () => {
   const [search, setSearch] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [form, setForm] = useState(emptyForm);
-  const [errors, setErrors] = useState(emptyErrors);
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm({
+    resolver: zodResolver(assetsSchema),
+    mode: "all",
+    defaultValues,
+  });
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(assets));
@@ -61,57 +67,59 @@ const Assets = () => {
   }, [assets, search]);
 
   const openAdd = () => {
-    setForm(emptyForm);
+    reset(defaultValues);
     setEditingId(null);
     setIsOpen(true);
   };
 
   const openEdit = (item) => {
-    setForm(item);
+    reset({
+      name: item.name,
+      location: item.location,
+      status: item.status,
+      lastMaintenance: item.lastMaintenance,
+    });
     setEditingId(item.id);
     setIsOpen(true);
   };
 
   const closeModal = () => {
     setIsOpen(false);
-    setForm(emptyForm);
+    reset(defaultValues);
     setEditingId(null);
   };
 
   const handleDelete = (id) => {
-    setAssets(assets.filter((item) => item.id !== id));
+    setAssets((prev) => prev.filter((item) => item.id !== id));
   };
 
-  const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-  };
-
-  const validate = () => {
-    const newErrors = { ...emptyErrors };
-
-    if (!form.name) newErrors.name = "Required";
-    if (!form.location) newErrors.location = "Required";
-    if (!form.lastMaintenance) newErrors.lastMaintenance = "Required";
-
-    setErrors(newErrors);
-    return Object.values(newErrors).every((v) => v === "");
-  };
-
-  const handleSave = () => {
-    if (!validate()) return;
+  const onSubmit = async (data) => {
+    console.log(data);
 
     if (editingId) {
-      setAssets(
-        assets.map((a) =>
-          a.id === editingId ? { ...a, ...form } : a
+      setAssets((prev) =>
+        prev.map((item) =>
+          item.id === editingId
+            ? {
+                ...item,
+                name: data.name.trim(),
+                location: data.location.trim(),
+                status: data.status,
+                lastMaintenance: data.lastMaintenance.trim(),
+              }
+            : item
         )
       );
     } else {
       const newAsset = {
         id: `A${Date.now()}`,
-        ...form,
+        name: data.name.trim(),
+        location: data.location.trim(),
+        status: data.status,
+        lastMaintenance: data.lastMaintenance.trim(),
       };
-      setAssets([newAsset, ...assets]);
+
+      setAssets((prev) => [newAsset, ...prev]);
     }
 
     closeModal();
@@ -128,7 +136,7 @@ const Assets = () => {
           <p className="ui-subtitle">Manage company assets</p>
         </div>
 
-        <button className="ui-btn-primary" onClick={openAdd}>
+        <button className="ui-btn-primary" onClick={openAdd} type="button">
           ➕ Add Asset
         </button>
       </div>
@@ -155,34 +163,46 @@ const Assets = () => {
           </thead>
 
           <tbody>
-            {filtered.map((item) => (
-              <tr key={item.id}>
-                <td>{item.name}</td>
-                <td>{item.location}</td>
-                <td>
-                  <span className={`ui-badge ${getStatusClass(item.status)}`}>
-                    {item.status}
-                  </span>
-                </td>
-                <td>{item.lastMaintenance}</td>
-                <td>
-                  <div className={styles.actions}>
-                    <button
-                      className="ui-btn-icon"
-                      onClick={() => openEdit(item)}
-                    >
-                      ✏️
-                    </button>
-                    <button
-                      className="ui-btn-icon"
-                      onClick={() => handleDelete(item.id)}
-                    >
-                      🗑️
-                    </button>
-                  </div>
+            {filtered.length > 0 ? (
+              filtered.map((item) => (
+                <tr key={item.id}>
+                  <td>{item.name}</td>
+                  <td>{item.location}</td>
+                  <td>
+                    <span className={`ui-badge ${getStatusClass(item.status)}`}>
+                      {item.status}
+                    </span>
+                  </td>
+                  <td>{item.lastMaintenance}</td>
+                  <td>
+                    <div className={styles.actions}>
+                      <button
+                        className="ui-btn-icon"
+                        onClick={() => openEdit(item)}
+                        type="button"
+                        title="Edit"
+                      >
+                        ✏️
+                      </button>
+                      <button
+                        className="ui-btn-icon"
+                        onClick={() => handleDelete(item.id)}
+                        type="button"
+                        title="Delete"
+                      >
+                        🗑️
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan="5" className="ui-empty">
+                  No assets found — start by adding one.
                 </td>
               </tr>
-            ))}
+            )}
           </tbody>
         </table>
       </div>
@@ -192,43 +212,46 @@ const Assets = () => {
           title={editingId ? "Edit Asset" : "Add Asset"}
           onClose={closeModal}
         >
-          <input
-            className="ui-input"
-            name="name"
-            placeholder="Name"
-            value={form.name}
-            onChange={handleChange}
-          />
+          <form onSubmit={handleSubmit(onSubmit)}>
+            <input
+              className="ui-input"
+              placeholder="Name"
+              {...register("name")}
+            />
+            {errors.name && <p className={styles.errorText}>{errors.name.message}</p>}
 
-          <input
-            className="ui-input"
-            name="location"
-            placeholder="Location"
-            value={form.location}
-            onChange={handleChange}
-          />
+            <input
+              className="ui-input"
+              placeholder="Location"
+              {...register("location")}
+            />
+            {errors.location && (
+              <p className={styles.errorText}>{errors.location.message}</p>
+            )}
 
-          <input
-            className="ui-input"
-            name="lastMaintenance"
-            placeholder="DD/MM/YYYY"
-            value={form.lastMaintenance}
-            onChange={handleChange}
-          />
+            <input
+              className="ui-input"
+              placeholder="DD/MM/YYYY" 
+              type="date"
+              {...register("lastMaintenance")}
+            />
+            {errors.lastMaintenance && (
+              <p className={styles.errorText}>{errors.lastMaintenance.message}</p>
+            )}
 
-          <select
-            className="ui-input"
-            name="status"
-            value={form.status}
-            onChange={handleChange}
-          >
-            <option>Active</option>
-            <option>Inactive</option>
-          </select>
+            <select className="ui-input" {...register("status")}>
+              <option value="Active">Active</option>
+              <option value="Inactive">Inactive</option>
+            </select>
 
-          <button className="ui-btn-primary" onClick={handleSave}>
-            Save
-          </button>
+            <button
+              className="ui-btn-primary"
+              type="submit"
+              disabled={isSubmitting}
+            >
+              {editingId ? "Update Asset" : "Save Asset"}
+            </button>
+          </form>
         </Modal>
       )}
     </div>

@@ -1,33 +1,36 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import styles from "./Maintenance.module.css";
 import Modal from "../../components/Modal/Modal";
+import { maintenanceSchema } from "./MaintenanceSchema";
 
 const initialMaintenance = [
   {
     id: "M001",
     asset: "AC Unit",
-    date: "12/02/2026",
+    date: "2026-02-12",
     cost: "$250",
     status: "Completed",
   },
   {
     id: "M002",
     asset: "Printer",
-    date: "10/02/2026",
+    date: "2026-02-10",
     cost: "$180",
     status: "Pending",
   },
   {
     id: "M003",
     asset: "Projector",
-    date: "08/02/2026",
+    date: "2026-02-08",
     cost: "$120",
     status: "In Progress",
   },
   {
     id: "M004",
     asset: "Camera",
-    date: "05/02/2026",
+    date: "2026-02-05",
     cost: "$90",
     status: "Completed",
   },
@@ -35,17 +38,11 @@ const initialMaintenance = [
 
 const STORAGE_KEY = "maintenance_data";
 
-const emptyForm = {
+const defaultValues = {
   asset: "",
   date: "",
   cost: "",
   status: "Pending",
-};
-
-const emptyErrors = {
-  asset: "",
-  date: "",
-  cost: "",
 };
 
 const Maintenance = () => {
@@ -57,8 +54,17 @@ const Maintenance = () => {
   const [search, setSearch] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [form, setForm] = useState(emptyForm);
-  const [errors, setErrors] = useState(emptyErrors);
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm({
+    resolver: zodResolver(maintenanceSchema),
+    mode: "all",
+    defaultValues,
+  });
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(maintenanceList));
@@ -75,9 +81,13 @@ const Maintenance = () => {
     });
   }, [maintenanceList, search]);
 
+  const normalizeCost = (value) => {
+    const trimmed = value.trim();
+    return trimmed.startsWith("$") ? trimmed : `$${trimmed}`;
+  };
+
   const resetFormState = () => {
-    setForm(emptyForm);
-    setErrors(emptyErrors);
+    reset(defaultValues);
     setEditingId(null);
   };
 
@@ -87,13 +97,12 @@ const Maintenance = () => {
   };
 
   const openEditModal = (item) => {
-    setForm({
+    reset({
       asset: item.asset,
       date: item.date,
-      cost: item.cost,
+      cost: item.cost.replace("$", ""),
       status: item.status,
     });
-    setErrors(emptyErrors);
     setEditingId(item.id);
     setIsOpen(true);
   };
@@ -122,54 +131,8 @@ const Maintenance = () => {
     localStorage.removeItem(STORAGE_KEY);
   };
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-
-    setForm((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-
-    setErrors((prev) => ({
-      ...prev,
-      [name]: "",
-    }));
-  };
-
-  const validateForm = () => {
-    const newErrors = { ...emptyErrors };
-
-    if (!form.asset.trim()) {
-      newErrors.asset = "Asset name is required.";
-    }
-
-    if (!form.date.trim()) {
-      newErrors.date = "Date is required.";
-    } else if (
-      !/^(0[1-9]|[12][0-9]|3[01])\/(0[1-9]|1[0-2])\/\d{4}$/.test(
-        form.date.trim()
-      )
-    ) {
-      newErrors.date = "Use date format DD/MM/YYYY.";
-    }
-
-    if (!form.cost.trim()) {
-      newErrors.cost = "Cost is required.";
-    } else if (!/^\$?\d+(\.\d+)?$/.test(form.cost.trim())) {
-      newErrors.cost = "Enter a valid cost like 120 or $120.";
-    }
-
-    setErrors(newErrors);
-    return Object.values(newErrors).every((value) => value === "");
-  };
-
-  const normalizeCost = (value) => {
-    const trimmed = value.trim();
-    return trimmed.startsWith("$") ? trimmed : `$${trimmed}`;
-  };
-
-  const handleSave = () => {
-    if (!validateForm()) return;
+  const onSubmit = async (data) => {
+    console.log("Maintenance Data:", data);
 
     if (editingId) {
       setMaintenanceList((prev) =>
@@ -177,22 +140,23 @@ const Maintenance = () => {
           item.id === editingId
             ? {
                 ...item,
-                asset: form.asset.trim(),
-                date: form.date.trim(),
-                cost: normalizeCost(form.cost),
-                status: form.status,
+                asset: data.asset.trim(),
+                date: data.date,
+                cost: normalizeCost(data.cost),
+                status: data.status,
               }
             : item
         )
       );
     } else {
       const nextIdNumber = maintenanceList.length + 1;
+
       const newItem = {
         id: `M${String(nextIdNumber).padStart(3, "0")}`,
-        asset: form.asset.trim(),
-        date: form.date.trim(),
-        cost: normalizeCost(form.cost),
-        status: form.status,
+        asset: data.asset.trim(),
+        date: data.date,
+        cost: normalizeCost(data.cost),
+        status: data.status,
       };
 
       setMaintenanceList((prev) => [newItem, ...prev]);
@@ -216,11 +180,11 @@ const Maintenance = () => {
         </div>
 
         <div className="ui-actions">
-          <button className="ui-btn-secondary" onClick={handleReset}>
+          <button className="ui-btn-secondary" onClick={handleReset} type="button">
             Reset
           </button>
 
-          <button className="ui-btn-primary" onClick={openAddModal}>
+          <button className="ui-btn-primary" onClick={openAddModal} type="button">
             ➕ Add
           </button>
         </div>
@@ -300,74 +264,72 @@ const Maintenance = () => {
           title={editingId ? "Edit Maintenance" : "Add Maintenance"}
           onClose={closeModal}
         >
-          <div className={styles.modalGrid}>
-            <div className={styles.formGroup}>
-              <label>Asset Name</label>
-              <input
-                className={`ui-input ${errors.asset ? styles.inputError : ""}`}
-                name="asset"
-                placeholder="Asset name"
-                value={form.asset}
-                onChange={handleChange}
-              />
-              {errors.asset && (
-                <span className={styles.errorText}>{errors.asset}</span>
-              )}
+          <form onSubmit={handleSubmit(onSubmit)}>
+            <div className={styles.modalGrid}>
+              <div className={styles.formGroup}>
+                <label>Asset Name</label>
+                <input
+                  className={`ui-input ${errors.asset ? styles.inputError : ""}`}
+                  placeholder="Asset name"
+                  {...register("asset")}
+                />
+                {errors.asset && (
+                  <span className={styles.errorText}>{errors.asset.message}</span>
+                )}
+              </div>
+
+              <div className={styles.formGroup}>
+                <label>Date</label>
+                <input
+                  className={`ui-input ${errors.date ? styles.inputError : ""}`}
+                  type="date"
+                  {...register("date")}
+                />
+                {errors.date && (
+                  <span className={styles.errorText}>{errors.date.message}</span>
+                )}
+              </div>
+
+              <div className={styles.formGroup}>
+                <label>Cost</label>
+                <input
+                  className={`ui-input ${errors.cost ? styles.inputError : ""}`}
+                  placeholder="$120"
+                  {...register("cost")}
+                />
+                {errors.cost && (
+                  <span className={styles.errorText}>{errors.cost.message}</span>
+                )}
+              </div>
+
+              <div className={styles.formGroup}>
+                <label>Status</label>
+                <select className="ui-input" {...register("status")}>
+                  <option value="Completed">Completed</option>
+                  <option value="Pending">Pending</option>
+                  <option value="In Progress">In Progress</option>
+                </select>
+              </div>
             </div>
 
-            <div className={styles.formGroup}>
-              <label>Date</label>
-              <input
-                className={`ui-input ${errors.date ? styles.inputError : ""}`}
-                name="date"
-                placeholder="DD/MM/YYYY"
-                type="date"
-                value={form.date}
-                onChange={handleChange}
-              />
-              {errors.date && (
-                <span className={styles.errorText}>{errors.date}</span>
-              )}
-            </div>
-
-            <div className={styles.formGroup}>
-              <label>Cost</label>
-              <input
-                className={`ui-input ${errors.cost ? styles.inputError : ""}`}
-                name="cost"
-                placeholder="$120"
-                value={form.cost}
-                onChange={handleChange}
-              />
-              {errors.cost && (
-                <span className={styles.errorText}>{errors.cost}</span>
-              )}
-            </div>
-
-            <div className={styles.formGroup}>
-              <label>Status</label>
-              <select
-                className="ui-input"
-                name="status"
-                value={form.status}
-                onChange={handleChange}
+            <div className={styles.modalActions}>
+              <button
+                className="ui-btn-secondary"
+                onClick={closeModal}
+                type="button"
               >
-                <option value="Completed">Completed</option>
-                <option value="Pending">Pending</option>
-                <option value="In Progress">In Progress</option>
-              </select>
+                Cancel
+              </button>
+
+              <button
+                className="ui-btn-primary"
+                type="submit"
+                disabled={isSubmitting}
+              >
+                {editingId ? "Update Maintenance" : "Save Maintenance"}
+              </button>
             </div>
-          </div>
-
-          <div className={styles.modalActions}>
-            <button className="ui-btn-secondary" onClick={closeModal} type="button">
-              Cancel
-            </button>
-
-            <button className="ui-btn-primary" onClick={handleSave} type="button">
-              {editingId ? "Update Maintenance" : "Save Maintenance"}
-            </button>
-          </div>
+          </form>
         </Modal>
       )}
     </div>

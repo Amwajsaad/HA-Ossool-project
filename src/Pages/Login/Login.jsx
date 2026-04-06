@@ -27,9 +27,9 @@ const Login = () => {
     },
   });
 
-
   const onSubmit = async (data) => {
-    console.log(data) 
+    console.log("Login Data:", data);
+    setLoginError("");
 
     const savedUser = JSON.parse(localStorage.getItem("registeredUser"));
 
@@ -43,7 +43,6 @@ const Login = () => {
       return;
     }
 
-    // إذا نجح التحقق
     localStorage.setItem("token", "admin-token");
     localStorage.setItem("currentUser", JSON.stringify(savedUser));
     navigate("/Home");
@@ -115,6 +114,6 @@ const Login = () => {
       </form>
     </AuthLayout>
   );
-}; 
+};
 
 export default Login;

@@ -1,5 +1,8 @@
 import React, { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import styles from "./Settings.module.css";
+import { settingsSchema } from "./SettingsSchema";
 
 const defaultSettings = {
   companyName: "AH-Ossooll",
@@ -12,28 +15,33 @@ const defaultSettings = {
 const STORAGE_KEY = "settings_data";
 
 const Settings = () => {
-  const [settings, setSettings] = useState(() => {
-    const savedSettings = localStorage.getItem(STORAGE_KEY);
-    return savedSettings ? JSON.parse(savedSettings) : defaultSettings;
-  });
-
   const [savedMessage, setSavedMessage] = useState("");
 
+  const savedSettings = localStorage.getItem(STORAGE_KEY);
+  const initialValues = savedSettings ? JSON.parse(savedSettings) : defaultSettings;
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm({
+    resolver: zodResolver(settingsSchema),
+    mode: "all",
+    defaultValues: initialValues,
+  });
+
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-  }, [settings]);
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      reset(JSON.parse(saved));
+    }
+  }, [reset]);
 
-  const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
+  const onSubmit = async (data) => {
+    console.log(data);
 
-    setSettings((prev) => ({
-      ...prev,
-      [name]: type === "checkbox" ? checked : value,
-    }));
-  };
-
-  const handleSave = () => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
     setSavedMessage("Settings saved successfully.");
 
     setTimeout(() => {
@@ -48,7 +56,7 @@ const Settings = () => {
 
     if (!confirmReset) return;
 
-    setSettings(defaultSettings);
+    reset(defaultSettings);
     localStorage.removeItem(STORAGE_KEY);
     setSavedMessage("Settings reset to default.");
 
@@ -68,10 +76,15 @@ const Settings = () => {
         </div>
 
         <div className="ui-actions">
-          <button className="ui-btn-secondary" onClick={handleReset}>
+          <button className="ui-btn-secondary" onClick={handleReset} type="button">
             Reset
           </button>
-          <button className="ui-btn-primary" onClick={handleSave}>
+          <button
+            className="ui-btn-primary"
+            type="submit"
+            form="settings-form"
+            disabled={isSubmitting}
+          >
             Save Changes
           </button>
         </div>
@@ -79,77 +92,70 @@ const Settings = () => {
 
       {savedMessage && <div className={styles.successMessage}>{savedMessage}</div>}
 
-      <div className={styles.settingsGrid}>
-        <div className="ui-card">
-          <h3 className={styles.cardTitle}>General Settings</h3>
+      <form id="settings-form" onSubmit={handleSubmit(onSubmit)}>
+        <div className={styles.settingsGrid}>
+          <div className="ui-card">
+            <h3 className={styles.cardTitle}>General Settings</h3>
 
-          <div className={styles.formGroup}>
-            <label>Company Name</label>
-            <input
-              className="ui-input"
-              type="text"
-              name="companyName"
-              value={settings.companyName}
-              onChange={handleChange}
-            />
+            <div className={styles.formGroup}>
+              <label>Company Name</label>
+              <input
+                className="ui-input"
+                type="text"
+                {...register("companyName")}
+              />
+              {errors.companyName && (
+                <span className={styles.errorText}>
+                  {errors.companyName.message}
+                </span>
+              )}
+            </div>
+
+            <div className={styles.formGroup}>
+              <label>Support Email</label>
+              <input
+                className="ui-input"
+                type="email"
+                {...register("supportEmail")}
+              />
+              {errors.supportEmail && (
+                <span className={styles.errorText}>
+                  {errors.supportEmail.message}
+                </span>
+              )}
+            </div>
           </div>
 
-          <div className={styles.formGroup}>
-            <label>Support Email</label>
-            <input
-              className="ui-input"
-              type="email"
-              name="supportEmail"
-              value={settings.supportEmail}
-              onChange={handleChange}
-            />
+          <div className="ui-card">
+            <h3 className={styles.cardTitle}>Appearance</h3>
+
+            <div className={styles.formGroup}>
+              <label>Theme</label>
+              <select className="ui-input" {...register("theme")}>
+                <option value="Light">Light</option>
+                <option value="Dark">Dark</option>
+              </select>
+            </div>
+
+            <div className={styles.formGroup}>
+              <label>Language</label>
+              <select className="ui-input" {...register("language")}>
+                <option value="English">English</option>
+                <option value="Arabic">Arabic</option>
+              </select>
+            </div>
+          </div>
+
+          <div className={`ui-card ${styles.fullWidthCard}`}>
+            <h3 className={styles.cardTitle}>Notifications</h3>
+
+            <label className={styles.checkboxRow}>
+              <input type="checkbox" {...register("notifications")} />
+              <span>Enable system notifications</span>
+            </label>
           </div>
         </div>
-
-        <div className="ui-card">
-          <h3 className={styles.cardTitle}>Appearance</h3>
-
-          <div className={styles.formGroup}>
-            <label>Theme</label>
-            <select
-              className="ui-input"
-              name="theme"
-              value={settings.theme}
-              onChange={handleChange}
-            >
-              <option value="Light">Light</option>
-              <option value="Dark">Dark</option>
-            </select>
-          </div>
-
-          <div className={styles.formGroup}>
-            <label>Language</label>
-            <select
-              className="ui-input"
-              name="language"
-              value={settings.language}
-              onChange={handleChange}
-            >
-              <option value="English">English</option>
-              <option value="Arabic">Arabic</option>
-            </select>
-          </div>
-        </div>
-
-        <div className={`ui-card ${styles.fullWidthCard}`}>
-          <h3 className={styles.cardTitle}>Notifications</h3>
-
-          <label className={styles.checkboxRow}>
-            <input
-              type="checkbox"
-              name="notifications"
-              checked={settings.notifications}
-              onChange={handleChange}
-            />
-            <span>Enable system notifications</span>
-          </label>
-        </div>
-      </div>
+      </form>
     </div>
   );
 };

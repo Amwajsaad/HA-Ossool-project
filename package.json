@@ -12,7 +12,7 @@
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
     "apexcharts": "^5.10.4",
-    "dotenv": "^17.4.0",
+    "dotenv": "^17.4.1",
     "jwt-decode": "^4.0.0",
     "react": "^19.2.4",
     "react-apexcharts": "^2.1.0",

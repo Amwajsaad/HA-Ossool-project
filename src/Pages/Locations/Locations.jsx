@@ -1,6 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import styles from "./Locations.module.css";
 import Modal from "../../components/Modal/Modal";
+import { locationsSchema } from "./LocationsSchema";
 
 const initialLocations = [
   {
@@ -39,19 +42,12 @@ const initialLocations = [
 
 const STORAGE_KEY = "locations_data";
 
-const emptyForm = {
+const defaultValues = {
   name: "",
   city: "",
   assets: "",
   departments: "",
   status: "Active",
-};
-
-const emptyErrors = {
-  name: "",
-  city: "",
-  assets: "",
-  departments: "",
 };
 
 const Locations = () => {
@@ -63,8 +59,17 @@ const Locations = () => {
   const [search, setSearch] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [form, setForm] = useState(emptyForm);
-  const [errors, setErrors] = useState(emptyErrors);
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm({
+    resolver: zodResolver(locationsSchema),
+    mode: "all",
+    defaultValues,
+  });
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(locations));
@@ -81,8 +86,7 @@ const Locations = () => {
   }, [locations, search]);
 
   const resetFormState = () => {
-    setForm(emptyForm);
-    setErrors(emptyErrors);
+    reset(defaultValues);
     setEditingId(null);
   };
 
@@ -92,14 +96,13 @@ const Locations = () => {
   };
 
   const openEditModal = (location) => {
-    setForm({
+    reset({
       name: location.name,
       city: location.city,
       assets: String(location.assets),
       departments: String(location.departments),
       status: location.status,
     });
-    setErrors(emptyErrors);
     setEditingId(location.id);
     setIsOpen(true);
   };
@@ -128,51 +131,8 @@ const Locations = () => {
     localStorage.removeItem(STORAGE_KEY);
   };
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-
-    setForm((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-
-    setErrors((prev) => ({
-      ...prev,
-      [name]: "",
-    }));
-  };
-
-  const validateForm = () => {
-    const newErrors = { ...emptyErrors };
-
-    if (!form.name.trim()) {
-      newErrors.name = "Location name is required.";
-    } else if (form.name.trim().length < 2) {
-      newErrors.name = "Location name must be at least 2 characters.";
-    }
-
-    if (!form.city.trim()) {
-      newErrors.city = "City is required.";
-    }
-
-    if (!form.assets.trim()) {
-      newErrors.assets = "Assets count is required.";
-    } else if (Number(form.assets) < 0) {
-      newErrors.assets = "Assets count must be 0 or more.";
-    }
-
-    if (!form.departments.trim()) {
-      newErrors.departments = "Departments count is required.";
-    } else if (Number(form.departments) < 0) {
-      newErrors.departments = "Departments count must be 0 or more.";
-    }
-
-    setErrors(newErrors);
-    return Object.values(newErrors).every((value) => value === "");
-  };
-
-  const handleSave = () => {
-    if (!validateForm()) return;
+  const onSubmit = async (data) => {
+    console.log(data);
 
     if (editingId) {
       setLocations((prev) =>
@@ -180,24 +140,25 @@ const Locations = () => {
           item.id === editingId
             ? {
                 ...item,
-                name: form.name.trim(),
-                city: form.city.trim(),
-                assets: Number(form.assets),
-                departments: Number(form.departments),
-                status: form.status,
+                name: data.name.trim(),
+                city: data.city.trim(),
+                assets: Number(data.assets),
+                departments: Number(data.departments),
+                status: data.status,
               }
             : item
         )
       );
     } else {
       const nextIdNumber = locations.length + 1;
+
       const newLocation = {
         id: `L${String(nextIdNumber).padStart(3, "0")}`,
-        name: form.name.trim(),
-        city: form.city.trim(),
-        assets: Number(form.assets),
-        departments: Number(form.departments),
-        status: form.status,
+        name: data.name.trim(),
+        city: data.city.trim(),
+        assets: Number(data.assets),
+        departments: Number(data.departments),
+        status: data.status,
       };
 
       setLocations((prev) => [newLocation, ...prev]);
@@ -219,11 +180,11 @@ const Locations = () => {
         </div>
 
         <div className="ui-actions">
-          <button className="ui-btn-secondary" onClick={handleReset}>
+          <button className="ui-btn-secondary" onClick={handleReset} type="button">
             Reset
           </button>
 
-          <button className="ui-btn-primary" onClick={openAddModal}>
+          <button className="ui-btn-primary" onClick={openAddModal} type="button">
             ➕ Add Location
           </button>
         </div>
@@ -305,86 +266,89 @@ const Locations = () => {
           title={editingId ? "Edit Location" : "Add Location"}
           onClose={closeModal}
         >
-          <div className={styles.modalGrid}>
-            <div className={styles.formGroup}>
-              <label>Location Name</label>
-              <input
-                className={`ui-input ${errors.name ? styles.inputError : ""}`}
-                name="name"
-                placeholder="Location name"
-                value={form.name}
-                onChange={handleChange}
-              />
-              {errors.name && <span className={styles.errorText}>{errors.name}</span>}
+          <form onSubmit={handleSubmit(onSubmit)}>
+            <div className={styles.modalGrid}>
+              <div className={styles.formGroup}>
+                <label>Location Name</label>
+                <input
+                  className={`ui-input ${errors.name ? styles.inputError : ""}`}
+                  placeholder="Location name"
+                  {...register("name")}
+                />
+                {errors.name && (
+                  <span className={styles.errorText}>{errors.name.message}</span>
+                )}
+              </div>
+
+              <div className={styles.formGroup}>
+                <label>City</label>
+                <input
+                  className={`ui-input ${errors.city ? styles.inputError : ""}`}
+                  placeholder="City"
+                  {...register("city")}
+                />
+                {errors.city && (
+                  <span className={styles.errorText}>{errors.city.message}</span>
+                )}
+              </div>
+
+              <div className={styles.formGroup}>
+                <label>Assets Count</label>
+                <input
+                  className={`ui-input ${errors.assets ? styles.inputError : ""}`}
+                  type="number"
+                  placeholder="0"
+                  {...register("assets")}
+                />
+                {errors.assets && (
+                  <span className={styles.errorText}>{errors.assets.message}</span>
+                )}
+              </div>
+
+              <div className={styles.formGroup}>
+                <label>Departments Count</label>
+                <input
+                  className={`ui-input ${
+                    errors.departments ? styles.inputError : ""
+                  }`}
+                  type="number"
+                  placeholder="0"
+                  {...register("departments")}
+                />
+                {errors.departments && (
+                  <span className={styles.errorText}>
+                    {errors.departments.message}
+                  </span>
+                )}
+              </div>
+
+              <div className={styles.formGroupFull}>
+                <label>Status</label>
+                <select className="ui-input" {...register("status")}>
+                  <option value="Active">Active</option>
+                  <option value="Inactive">Inactive</option>
+                </select>
+              </div>
             </div>
 
-            <div className={styles.formGroup}>
-              <label>City</label>
-              <input
-                className={`ui-input ${errors.city ? styles.inputError : ""}`}
-                name="city"
-                placeholder="City"
-                value={form.city}
-                onChange={handleChange}
-              />
-              {errors.city && <span className={styles.errorText}>{errors.city}</span>}
-            </div>
-
-            <div className={styles.formGroup}>
-              <label>Assets Count</label>
-              <input
-                className={`ui-input ${errors.assets ? styles.inputError : ""}`}
-                name="assets"
-                type="number"
-                placeholder="0"
-                value={form.assets}
-                onChange={handleChange}
-              />
-              {errors.assets && (
-                <span className={styles.errorText}>{errors.assets}</span>
-              )}
-            </div>
-
-            <div className={styles.formGroup}>
-              <label>Departments Count</label>
-              <input
-                className={`ui-input ${
-                  errors.departments ? styles.inputError : ""
-                }`}
-                name="departments"
-                type="number"
-                placeholder="0"
-                value={form.departments}
-                onChange={handleChange}
-              />
-              {errors.departments && (
-                <span className={styles.errorText}>{errors.departments}</span>
-              )}
-            </div>
-
-            <div className={styles.formGroupFull}>
-              <label>Status</label>
-              <select
-                className="ui-input"
-                name="status"
-                value={form.status}
-                onChange={handleChange}
+            <div className={styles.modalActions}>
+              <button
+                className="ui-btn-secondary"
+                onClick={closeModal}
+                type="button"
               >
-                <option value="Active">Active</option>
-                <option value="Inactive">Inactive</option>
-              </select>
+                Cancel
+              </button>
+
+              <button
+                className="ui-btn-primary"
+                type="submit"
+                disabled={isSubmitting}
+              >
+                {editingId ? "Update Location" : "Save Location"}
+              </button>
             </div>
-          </div>
-
-          <div className={styles.modalActions}>
-            <button className="ui-btn-secondary" onClick={closeModal} type="button">
-              Cancel
-            </button>
-
-            <button className="ui-btn-primary" onClick={handleSave} type="button">
-              {editingId ? "Update Location" : "Save Location"}
-            </button>
-          </div>
+          </form>
         </Modal>
       )}
     </div>

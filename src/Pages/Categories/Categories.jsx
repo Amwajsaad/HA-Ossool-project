@@ -1,6 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import styles from "./Categories.module.css";
 import Modal from "../../components/Modal/Modal";
+import { categoriesSchema } from "./CategoriesSchema";
 
 const initialCategories = [
   {
@@ -35,17 +38,11 @@ const initialCategories = [
 
 const STORAGE_KEY = "categories_data";
 
-const emptyForm = {
+const defaultValues = {
   name: "",
   description: "",
   assetsCount: "",
   status: "Active",
-};
-
-const emptyErrors = {
-  name: "",
-  description: "",
-  assetsCount: "",
 };
 
 const Categories = () => {
@@ -57,8 +54,17 @@ const Categories = () => {
   const [search, setSearch] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [form, setForm] = useState(emptyForm);
-  const [errors, setErrors] = useState(emptyErrors);
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm({
+    resolver: zodResolver(categoriesSchema),
+    mode: "all",
+    defaultValues,
+  });
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(categories));
@@ -75,8 +81,7 @@ const Categories = () => {
   }, [categories, search]);
 
   const resetFormState = () => {
-    setForm(emptyForm);
-    setErrors(emptyErrors);
+    reset(defaultValues);
     setEditingId(null);
   };
 
@@ -86,13 +91,12 @@ const Categories = () => {
   };
 
   const openEditModal = (category) => {
-    setForm({
+    reset({
       name: category.name,
       description: category.description,
       assetsCount: String(category.assetsCount),
       status: category.status,
     });
-    setErrors(emptyErrors);
     setEditingId(category.id);
     setIsOpen(true);
   };
@@ -121,47 +125,8 @@ const Categories = () => {
     localStorage.removeItem(STORAGE_KEY);
   };
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-
-    setForm((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-
-    setErrors((prev) => ({
-      ...prev,
-      [name]: "",
-    }));
-  };
-
-  const validateForm = () => {
-    const newErrors = { ...emptyErrors };
-
-    if (!form.name.trim()) {
-      newErrors.name = "Category name is required.";
-    } else if (form.name.trim().length < 2) {
-      newErrors.name = "Category name must be at least 2 characters.";
-    }
-
-    if (!form.description.trim()) {
-      newErrors.description = "Description is required.";
-    } else if (form.description.trim().length < 5) {
-      newErrors.description = "Description must be at least 5 characters.";
-    }
-
-    if (!form.assetsCount.trim()) {
-      newErrors.assetsCount = "Assets count is required.";
-    } else if (Number(form.assetsCount) < 0) {
-      newErrors.assetsCount = "Assets count must be 0 or more.";
-    }
-
-    setErrors(newErrors);
-    return Object.values(newErrors).every((value) => value === "");
-  };
-
-  const handleSave = () => {
-    if (!validateForm()) return;
+  const onSubmit = async (data) => {
+    console.log(data);
 
     if (editingId) {
       setCategories((prev) =>
@@ -169,22 +134,23 @@ const Categories = () => {
           item.id === editingId
             ? {
                 ...item,
-                name: form.name.trim(),
-                description: form.description.trim(),
-                assetsCount: Number(form.assetsCount),
-                status: form.status,
+                name: data.name.trim(),
+                description: data.description.trim(),
+                assetsCount: Number(data.assetsCount),
+                status: data.status,
               }
             : item
         )
       );
     } else {
       const nextIdNumber = categories.length + 1;
+
       const newCategory = {
         id: `C${String(nextIdNumber).padStart(3, "0")}`,
-        name: form.name.trim(),
-        description: form.description.trim(),
-        assetsCount: Number(form.assetsCount),
-        status: form.status,
+        name: data.name.trim(),
+        description: data.description.trim(),
+        assetsCount: Number(data.assetsCount),
+        status: data.status,
       };
 
       setCategories((prev) => [newCategory, ...prev]);
@@ -206,11 +172,11 @@ const Categories = () => {
         </div>
 
         <div className="ui-actions">
-          <button className="ui-btn-secondary" onClick={handleReset}>
+          <button className="ui-btn-secondary" onClick={handleReset} type="button">
             Reset
           </button>
 
-          <button className="ui-btn-primary" onClick={openAddModal}>
+          <button className="ui-btn-primary" onClick={openAddModal} type="button">
             ➕ Add Category
           </button>
         </div>
@@ -290,75 +256,80 @@ const Categories = () => {
           title={editingId ? "Edit Category" : "Add Category"}
           onClose={closeModal}
         >
-          <div className={styles.modalGrid}>
-            <div className={styles.formGroup}>
-              <label>Category Name</label>
-              <input
-                className={`ui-input ${errors.name ? styles.inputError : ""}`}
-                name="name"
-                placeholder="Category name"
-                value={form.name}
-                onChange={handleChange}
-              />
-              {errors.name && <span className={styles.errorText}>{errors.name}</span>}
+          <form onSubmit={handleSubmit(onSubmit)}>
+            <div className={styles.modalGrid}>
+              <div className={styles.formGroup}>
+                <label>Category Name</label>
+                <input
+                  className={`ui-input ${errors.name ? styles.inputError : ""}`}
+                  placeholder="Category name"
+                  {...register("name")}
+                />
+                {errors.name && (
+                  <span className={styles.errorText}>{errors.name.message}</span>
+                )}
+              </div>
+
+              <div className={styles.formGroup}>
+                <label>Assets Count</label>
+                <input
+                  className={`ui-input ${
+                    errors.assetsCount ? styles.inputError : ""
+                  }`}
+                  type="number"
+                  placeholder="0"
+                  {...register("assetsCount")}
+                />
+                {errors.assetsCount && (
+                  <span className={styles.errorText}>
+                    {errors.assetsCount.message}
+                  </span>
+                )}
+              </div>
+
+              <div className={styles.formGroupFull}>
+                <label>Description</label>
+                <input
+                  className={`ui-input ${
+                    errors.description ? styles.inputError : ""
+                  }`}
+                  placeholder="Description"
+                  {...register("description")}
+                />
+                {errors.description && (
+                  <span className={styles.errorText}>
+                    {errors.description.message}
+                  </span>
+                )}
+              </div>
+
+              <div className={styles.formGroupFull}>
+                <label>Status</label>
+                <select className="ui-input" {...register("status")}>
+                  <option value="Active">Active</option>
+                  <option value="Inactive">Inactive</option>
+                </select>
+              </div>
             </div>
 
-            <div className={styles.formGroup}>
-              <label>Assets Count</label>
-              <input
-                className={`ui-input ${
-                  errors.assetsCount ? styles.inputError : ""
-                }`}
-                name="assetsCount"
-                type="number"
-                placeholder="0"
-                value={form.assetsCount}
-                onChange={handleChange}
-              />
-              {errors.assetsCount && (
-                <span className={styles.errorText}>{errors.assetsCount}</span>
-              )}
-            </div>
-
-            <div className={styles.formGroupFull}>
-              <label>Description</label>
-              <input
-                className={`ui-input ${
-                  errors.description ? styles.inputError : ""
-                }`}
-                name="description"
-                placeholder="Description"
-                value={form.description}
-                onChange={handleChange}
-              />
-              {errors.description && (
-                <span className={styles.errorText}>{errors.description}</span>
-              )}
-            </div>
-
-            <div className={styles.formGroupFull}>
-              <label>Status</label>
-              <select
-                className="ui-input"
-                name="status"
-                value={form.status}
-                onChange={handleChange}
+            <div className={styles.modalActions}>
+              <button
+                className="ui-btn-secondary"
+                onClick={closeModal}
+                type="button"
               >
-                <option value="Active">Active</option>
-                <option value="Inactive">Inactive</option>
-              </select>
+                Cancel
+              </button>
+
+              <button
+                className="ui-btn-primary"
+                type="submit"
+                disabled={isSubmitting}
+              >
+                {editingId ? "Update Category" : "Save Category"}
+              </button>
             </div>
-          </div>
-
-          <div className={styles.modalActions}>
-            <button className="ui-btn-secondary" onClick={closeModal} type="button">
-              Cancel
-            </button>
-
-            <button className="ui-btn-primary" onClick={handleSave} type="button">
-              {editingId ? "Update Category" : "Save Category"}
-            </button>
-          </div>
+          </form>
         </Modal>
       )}
     </div>

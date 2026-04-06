@@ -1,6 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import styles from "./Employees.module.css";
 import Modal from "../../components/Modal/Modal";
+import { employeesSchema } from "./EmployeesSchema";
 
 const initialEmployees = [
   {
@@ -43,21 +46,13 @@ const initialEmployees = [
 
 const STORAGE_KEY = "employees_data";
 
-const emptyForm = {
+const defaultValues = {
   name: "",
   department: "",
   phone: "",
   asset: "",
   branch: "",
   status: "Active",
-};
-
-const emptyErrors = {
-  name: "",
-  department: "",
-  phone: "",
-  asset: "",
-  branch: "",
 };
 
 const Employees = () => {
@@ -69,8 +64,17 @@ const Employees = () => {
   const [search, setSearch] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [form, setForm] = useState(emptyForm);
-  const [errors, setErrors] = useState(emptyErrors);
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm({
+    resolver: zodResolver(employeesSchema),
+    mode: "all",
+    defaultValues,
+  });
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(employees));
@@ -90,8 +94,7 @@ const Employees = () => {
   }, [employees, search]);
 
   const resetFormState = () => {
-    setForm(emptyForm);
-    setErrors(emptyErrors);
+    reset(defaultValues);
     setEditingId(null);
   };
 
@@ -101,7 +104,7 @@ const Employees = () => {
   };
 
   const openEditModal = (employee) => {
-    setForm({
+    reset({
       name: employee.name,
       department: employee.department,
       phone: employee.phone,
@@ -109,7 +112,6 @@ const Employees = () => {
       branch: employee.branch,
       status: employee.status,
     });
-    setErrors(emptyErrors);
     setEditingId(employee.id);
     setIsOpen(true);
   };
@@ -138,53 +140,8 @@ const Employees = () => {
     localStorage.removeItem(STORAGE_KEY);
   };
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-
-    setForm((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-
-    setErrors((prev) => ({
-      ...prev,
-      [name]: "",
-    }));
-  };
-
-  const validateForm = () => {
-    const newErrors = { ...emptyErrors };
-
-    if (!form.name.trim()) {
-      newErrors.name = "Name is required.";
-    } else if (form.name.trim().length < 2) {
-      newErrors.name = "Name must be at least 2 characters.";
-    }
-
-    if (!form.department.trim()) {
-      newErrors.department = "Department is required.";
-    }
-
-    if (!form.phone.trim()) {
-      newErrors.phone = "Phone is required.";
-    } else if (!/^05\d{8}$/.test(form.phone.trim())) {
-      newErrors.phone = "Phone must start with 05 and be 10 digits.";
-    }
-
-    if (!form.asset.trim()) {
-      newErrors.asset = "Assigned asset is required.";
-    }
-
-    if (!form.branch.trim()) {
-      newErrors.branch = "Branch is required.";
-    }
-
-    setErrors(newErrors);
-    return Object.values(newErrors).every((value) => value === "");
-  };
-
-  const handleSave = () => {
-    if (!validateForm()) return;
+  const onSubmit = async (data) => {
+    console.log(data);
 
     if (editingId) {
       setEmployees((prev) =>
@@ -192,26 +149,27 @@ const Employees = () => {
           item.id === editingId
             ? {
                 ...item,
-                name: form.name.trim(),
-                department: form.department.trim(),
-                phone: form.phone.trim(),
-                asset: form.asset.trim(),
-                branch: form.branch.trim(),
-                status: form.status,
+                name: data.name.trim(),
+                department: data.department.trim(),
+                phone: data.phone.trim(),
+                asset: data.asset.trim(),
+                branch: data.branch.trim(),
+                status: data.status,
               }
             : item
         )
       );
     } else {
       const nextIdNumber = employees.length + 1;
+
       const newEmployee = {
         id: `E${String(nextIdNumber).padStart(3, "0")}`,
-        name: form.name.trim(),
-        department: form.department.trim(),
-        phone: form.phone.trim(),
-        asset: form.asset.trim(),
-        branch: form.branch.trim(),
-        status: form.status,
+        name: data.name.trim(),
+        department: data.department.trim(),
+        phone: data.phone.trim(),
+        asset: data.asset.trim(),
+        branch: data.branch.trim(),
+        status: data.status,
       };
 
       setEmployees((prev) => [newEmployee, ...prev]);
@@ -233,11 +191,11 @@ const Employees = () => {
         </div>
 
         <div className="ui-actions">
-          <button className="ui-btn-secondary" onClick={handleReset}>
+          <button className="ui-btn-secondary" onClick={handleReset} type="button">
             Reset
           </button>
 
-          <button className="ui-btn-primary" onClick={openAddModal}>
+          <button className="ui-btn-primary" onClick={openAddModal} type="button">
             ➕ Add Employee
           </button>
         </div>
@@ -321,100 +279,99 @@ const Employees = () => {
           title={editingId ? "Edit Employee" : "Add Employee"}
           onClose={closeModal}
         >
-          <div className={styles.modalGrid}>
-            <div className={styles.formGroup}>
-              <label>Name</label>
-              <input
-                className={`ui-input ${errors.name ? styles.inputError : ""}`}
-                name="name"
-                placeholder="Employee name"
-                value={form.name}
-                onChange={handleChange}
-              />
-              {errors.name && <span className={styles.errorText}>{errors.name}</span>}
+          <form onSubmit={handleSubmit(onSubmit)}>
+            <div className={styles.modalGrid}>
+              <div className={styles.formGroup}>
+                <label>Name</label>
+                <input
+                  className={`ui-input ${errors.name ? styles.inputError : ""}`}
+                  placeholder="Employee name"
+                  {...register("name")}
+                />
+                {errors.name && (
+                  <span className={styles.errorText}>{errors.name.message}</span>
+                )}
+              </div>
+
+              <div className={styles.formGroup}>
+                <label>Department</label>
+                <input
+                  className={`ui-input ${
+                    errors.department ? styles.inputError : ""
+                  }`}
+                  placeholder="Department"
+                  {...register("department")}
+                />
+                {errors.department && (
+                  <span className={styles.errorText}>
+                    {errors.department.message}
+                  </span>
+                )}
+              </div>
+
+              <div className={styles.formGroup}>
+                <label>Phone</label>
+                <input
+                  className={`ui-input ${errors.phone ? styles.inputError : ""}`}
+                  placeholder="05XXXXXXXX"
+                  {...register("phone")}
+                />
+                {errors.phone && (
+                  <span className={styles.errorText}>{errors.phone.message}</span>
+                )}
+              </div>
+
+              <div className={styles.formGroup}>
+                <label>Assigned Asset</label>
+                <input
+                  className={`ui-input ${errors.asset ? styles.inputError : ""}`}
+                  placeholder="Assigned asset"
+                  {...register("asset")}
+                />
+                {errors.asset && (
+                  <span className={styles.errorText}>{errors.asset.message}</span>
+                )}
+              </div>
+
+              <div className={styles.formGroup}>
+                <label>Branch</label>
+                <input
+                  className={`ui-input ${errors.branch ? styles.inputError : ""}`}
+                  placeholder="Branch"
+                  {...register("branch")}
+                />
+                {errors.branch && (
+                  <span className={styles.errorText}>{errors.branch.message}</span>
+                )}
+              </div>
+
+              <div className={styles.formGroup}>
+                <label>Status</label>
+                <select className="ui-input" {...register("status")}>
+                  <option value="Active">Active</option>
+                  <option value="Inactive">Inactive</option>
+                </select>
+              </div>
             </div>
 
-            <div className={styles.formGroup}>
-              <label>Department</label>
-              <input
-                className={`ui-input ${
-                  errors.department ? styles.inputError : ""
-                }`}
-                name="department"
-                placeholder="Department"
-                value={form.department}
-                onChange={handleChange}
-              />
-              {errors.department && (
-                <span className={styles.errorText}>{errors.department}</span>
-              )}
-            </div>
-
-            <div className={styles.formGroup}>
-              <label>Phone</label>
-              <input
-                className={`ui-input ${errors.phone ? styles.inputError : ""}`}
-                name="phone"
-                placeholder="05XXXXXXXX"
-                value={form.phone}
-                onChange={handleChange}
-              />
-              {errors.phone && (
-                <span className={styles.errorText}>{errors.phone}</span>
-              )}
-            </div>
-
-            <div className={styles.formGroup}>
-              <label>Assigned Asset</label>
-              <input
-                className={`ui-input ${errors.asset ? styles.inputError : ""}`}
-                name="asset"
-                placeholder="Assigned asset"
-                value={form.asset}
-                onChange={handleChange}
-              />
-              {errors.asset && (
-                <span className={styles.errorText}>{errors.asset}</span>
-              )}
-            </div>
-
-            <div className={styles.formGroup}>
-              <label>Branch</label>
-              <input
-                className={`ui-input ${errors.branch ? styles.inputError : ""}`}
-                name="branch"
-                placeholder="Branch"
-                value={form.branch}
-                onChange={handleChange}
-              />
-              {errors.branch && (
-                <span className={styles.errorText}>{errors.branch}</span>
-              )}
-            </div>
-
-            <div className={styles.formGroup}>
-              <label>Status</label>
-              <select
-                className="ui-input"
-                name="status"
-                value={form.status}
-                onChange={handleChange}
+            <div className={styles.modalActions}>
+              <button
+                className="ui-btn-secondary"
+                onClick={closeModal}
+                type="button"
               >
-                <option value="Active">Active</option>
-                <option value="Inactive">Inactive</option>
-              </select>
+                Cancel
+              </button>
+
+              <button
+                className="ui-btn-primary"
+                type="submit"
+                disabled={isSubmitting}
+              >
+                {editingId ? "Update Employee" : "Save Employee"}
+              </button>
             </div>
-          </div>
-
-          <div className={styles.modalActions}>
-            <button className="ui-btn-secondary" onClick={closeModal} type="button">
-              Cancel
-            </button>
-
-            <button className="ui-btn-primary" onClick={handleSave} type="button">
-              {editingId ? "Update Employee" : "Save Employee"}
-            </button>
-          </div>
+          </form>
         </Modal>
       )}
     </div>
