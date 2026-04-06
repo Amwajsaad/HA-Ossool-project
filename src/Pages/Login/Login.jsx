@@ -29,19 +29,24 @@ const Login = () => {
   });
 
   const onSubmit = async (data) => {
-   console.log("Login Data:", data);
+    console.log("Login Data:", data);
     setLoginError("");
-    try {
-      const response= await login(data)
-       localStorage.setItem("token", response.token);
-       
-    localStorage.setItem("currentUser", JSON.stringify(savedUser));
-    navigate("/Home");
-    } catch (error) {
-      console.log(error)
-    }
 
-   
+    try {
+      const response = await login(data);
+      console.log("Login Response:", response);
+
+      if (response.isAuthenticated) {
+        localStorage.setItem("token", response.token);
+        localStorage.setItem("currentUser", JSON.stringify(response));
+        navigate("/Home");
+      } else {
+        setLoginError(response.message || "Login failed");
+      }
+    } catch (error) {
+      console.log(error);
+      setLoginError("Something went wrong");
+    }
   };
 
   return (
