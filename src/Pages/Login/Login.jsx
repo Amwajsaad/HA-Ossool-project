@@ -7,6 +7,7 @@ import AuthLayout from "../../components/AuthLayout/AuthLayout";
 import Input from "../../components/Input";
 import Button from "../../components/Button";
 import styles from "./Login.module.css";
+import { login } from "../../services/AuthService";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -28,24 +29,19 @@ const Login = () => {
   });
 
   const onSubmit = async (data) => {
-    console.log("Login Data:", data);
+   console.log("Login Data:", data);
     setLoginError("");
-
-    const savedUser = JSON.parse(localStorage.getItem("registeredUser"));
-
-    if (!savedUser) {
-      setLoginError("No registered account found. Please create an account first.");
-      return;
-    }
-
-    if (data.email !== savedUser.email || data.password !== savedUser.password) {
-      setLoginError("Invalid email or password.");
-      return;
-    }
-
-    localStorage.setItem("token", "admin-token");
+    try {
+      const response= await login(data)
+       localStorage.setItem("token", response.token);
+       
     localStorage.setItem("currentUser", JSON.stringify(savedUser));
     navigate("/Home");
+    } catch (error) {
+      console.log(error)
+    }
+
+   
   };
 
   return (
