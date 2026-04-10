@@ -4,39 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import styles from "./Maintenance.module.css";
 import Modal from "../../components/Modal/Modal";
 import { maintenanceSchema } from "./MaintenanceSchema";
-
-const initialMaintenance = [
-  {
-    id: "M001",
-    asset: "AC Unit",
-    date: "2026-02-12",
-    cost: "$250",
-    status: "Completed",
-  },
-  {
-    id: "M002",
-    asset: "Printer",
-    date: "2026-02-10",
-    cost: "$180",
-    status: "Pending",
-  },
-  {
-    id: "M003",
-    asset: "Projector",
-    date: "2026-02-08",
-    cost: "$120",
-    status: "In Progress",
-  },
-  {
-    id: "M004",
-    asset: "Camera",
-    date: "2026-02-05",
-    cost: "$90",
-    status: "Completed",
-  },
-];
-
-const STORAGE_KEY = "maintenance_data";
+import axios from "axios";
 
 const defaultValues = {
   asset: "",
@@ -45,12 +13,10 @@ const defaultValues = {
   status: "Pending",
 };
 
-const Maintenance = () => {
-  const [maintenanceList, setMaintenanceList] = useState(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    return saved ? JSON.parse(saved) : initialMaintenance;
-  });
+const API_URL = "https://ha-ossooll-back-production.up.railway.app/api/maintenance";
 
+const Maintenance = () => {
+  const [maintenanceList, setMaintenanceList] = useState([]);
   const [search, setSearch] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -66,25 +32,30 @@ const Maintenance = () => {
     defaultValues,
   });
 
+  // ✅ جلب البيانات من السيرفر
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(maintenanceList));
-  }, [maintenanceList]);
+    fetchMaintenance();
+  }, []);
+
+  const fetchMaintenance = async () => {
+    try {
+      const res = await axios.get(API_URL);
+      setMaintenanceList(res.data);
+    } catch (error) {
+      console.error("Error fetching maintenance:", error);
+    }
+  };
 
   const filtered = useMemo(() => {
     return maintenanceList.filter((item) => {
       const q = search.toLowerCase();
       return (
-        item.asset.toLowerCase().includes(q) ||
-        item.id.toLowerCase().includes(q) ||
-        item.status.toLowerCase().includes(q)
+        item.asset?.toLowerCase().includes(q) ||
+        item.id?.toLowerCase().includes(q) ||
+        item.status?.toLowerCase().includes(q)
       );
     });
   }, [maintenanceList, search]);
-
-  const normalizeCost = (value) => {
-    const trimmed = value.trim();
-    return trimmed.startsWith("$") ? trimmed : `$${trimmed}`;
-  };
 
   const resetFormState = () => {
     reset(defaultValues);
@@ -100,7 +71,7 @@ const Maintenance = () => {
     reset({
       asset: item.asset,
       date: item.date,
-      cost: item.cost.replace("$", ""),
+      cost: item.cost,
       status: item.status,
     });
     setEditingId(item.id);
@@ -112,57 +83,36 @@ const Maintenance = () => {
     resetFormState();
   };
 
-  const handleDelete = (id) => {
-    const confirmDelete = window.confirm(
-      "Are you sure you want to delete this maintenance record?"
-    );
-    if (!confirmDelete) return;
+  // ✅ حذف من السيرفر
+  const handleDelete = async (id) => {
+    if (!window.confirm("Are you sure?")) return;
 
-    setMaintenanceList((prev) => prev.filter((item) => item.id !== id));
+    try {
+      await axios.delete(`${API_URL}/${id}`);
+      fetchMaintenance();
+    } catch (error) {
+      console.error("Delete error:", error);
+    }
   };
 
   const handleReset = () => {
-    const confirmReset = window.confirm(
-      "This will reset maintenance data to the default list. Continue?"
-    );
-    if (!confirmReset) return;
-
-    setMaintenanceList(initialMaintenance);
-    localStorage.removeItem(STORAGE_KEY);
+    alert("Reset disabled لأن البيانات الآن من السيرفر ✅");
   };
 
+  // ✅ إضافة + تعديل
   const onSubmit = async (data) => {
-    console.log("Maintenance Data:", data);
+    try {
+      if (editingId) {
+        await axios.put(`${API_URL}/${editingId}`, data);
+      } else {
+        await axios.post(API_URL, data);
+      }
 
-    if (editingId) {
-      setMaintenanceList((prev) =>
-        prev.map((item) =>
-          item.id === editingId
-            ? {
-                ...item,
-                asset: data.asset.trim(),
-                date: data.date,
-                cost: normalizeCost(data.cost),
-                status: data.status,
-              }
-            : item
-        )
-      );
-    } else {
-      const nextIdNumber = maintenanceList.length + 1;
-
-      const newItem = {
-        id: `M${String(nextIdNumber).padStart(3, "0")}`,
-        asset: data.asset.trim(),
-        date: data.date,
-        cost: normalizeCost(data.cost),
-        status: data.status,
-      };
-
-      setMaintenanceList((prev) => [newItem, ...prev]);
+      fetchMaintenance();
+      closeModal();
+    } catch (error) {
+      console.error("Save error:", error);
     }
-
-    closeModal();
   };
 
   const getStatusClass = (status) => {
@@ -231,7 +181,6 @@ const Maintenance = () => {
                         className="ui-btn-icon"
                         onClick={() => openEditModal(item)}
                         type="button"
-                        title="Edit"
                       >
                         ✏️
                       </button>
@@ -240,7 +189,6 @@ const Maintenance = () => {
                         className="ui-btn-icon"
                         onClick={() => handleDelete(item.id)}
                         type="button"
-                        title="Delete"
                       >
                         🗑️
                       </button>
@@ -251,7 +199,7 @@ const Maintenance = () => {
             ) : (
               <tr>
                 <td colSpan="6" className="ui-empty">
-                  No maintenance found — start by adding one.
+                  No maintenance found
                 </td>
               </tr>
             )}
@@ -270,7 +218,6 @@ const Maintenance = () => {
                 <label>Asset Name</label>
                 <input
                   className={`ui-input ${errors.asset ? styles.inputError : ""}`}
-                  placeholder="Asset name"
                   {...register("asset")}
                 />
                 {errors.asset && (
@@ -280,26 +227,12 @@ const Maintenance = () => {
 
               <div className={styles.formGroup}>
                 <label>Date</label>
-                <input
-                  className={`ui-input ${errors.date ? styles.inputError : ""}`}
-                  type="date"
-                  {...register("date")}
-                />
-                {errors.date && (
-                  <span className={styles.errorText}>{errors.date.message}</span>
-                )}
+                <input type="date" className="ui-input" {...register("date")} />
               </div>
 
               <div className={styles.formGroup}>
                 <label>Cost</label>
-                <input
-                  className={`ui-input ${errors.cost ? styles.inputError : ""}`}
-                  placeholder="$120"
-                  {...register("cost")}
-                />
-                {errors.cost && (
-                  <span className={styles.errorText}>{errors.cost.message}</span>
-                )}
+                <input className="ui-input" {...register("cost")} />
               </div>
 
               <div className={styles.formGroup}>
@@ -313,20 +246,12 @@ const Maintenance = () => {
             </div>
 
             <div className={styles.modalActions}>
-              <button
-                className="ui-btn-secondary"
-                onClick={closeModal}
-                type="button"
-              >
+              <button className="ui-btn-secondary" onClick={closeModal} type="button">
                 Cancel
               </button>
 
-              <button
-                className="ui-btn-primary"
-                type="submit"
-                disabled={isSubmitting}
-              >
-                {editingId ? "Update Maintenance" : "Save Maintenance"}
+              <button className="ui-btn-primary" type="submit">
+                Save
               </button>
             </div>
           </form>
