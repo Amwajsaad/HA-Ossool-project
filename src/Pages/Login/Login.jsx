@@ -28,26 +28,31 @@ const Login = () => {
     },
   });
 
-  const onSubmit = async (data) => {
-    console.log("Login Data:", data);
-    setLoginError("");
+const onSubmit = async (data) => {
+  setLoginError("");
 
-    try {
-      const response = await login(data);
-      console.log("Login Response:", response);
+  try {
+    const response = await login({
+      email: data.email,
+      password: data.password,
+    });
 
-      if (response.isAuthenticated) {
-        localStorage.setItem("token", response.token);
-        localStorage.setItem("currentUser", JSON.stringify(response));
-        navigate("/Home");
-      } else {
-        setLoginError(response.message || "Login failed");
-      }
-    } catch (error) {
-      console.log(error);
-      setLoginError("Something went wrong");
+    console.log("Login Response:", response);
+
+    
+    if (response && response.token) {
+      localStorage.setItem("token", response.token);
+      localStorage.setItem("currentUser", JSON.stringify(response));
+
+      navigate("/Home"); 
+    } else {
+      setLoginError(response?.message || "Login failed");
     }
-  };
+  } catch (error) {
+    console.error(error);
+    setLoginError(error.message || "Something went wrong");
+  }
+};
 
   return (
     <AuthLayout

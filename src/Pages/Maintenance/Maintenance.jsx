@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import styles from "./Maintenance.module.css";
 import Modal from "../../components/Modal/Modal";
 import { maintenanceSchema } from "./MaintenanceSchema";
-import axios from "axios";
+import { authFetch } from "../../services/AuthService";
 
 const defaultValues = {
   asset: "",
@@ -13,7 +13,7 @@ const defaultValues = {
   status: "Pending",
 };
 
-const API_URL = "https://ha-ossooll-back-production.up.railway.app/api/maintenance";
+const API_URL = "http://localhost:5100/api/Maintenance";
 
 const Maintenance = () => {
   const [maintenanceList, setMaintenanceList] = useState([]);
@@ -32,15 +32,15 @@ const Maintenance = () => {
     defaultValues,
   });
 
-  // ✅ جلب البيانات من السيرفر
   useEffect(() => {
     fetchMaintenance();
   }, []);
 
   const fetchMaintenance = async () => {
     try {
-      const res = await axios.get(API_URL);
-      setMaintenanceList(res.data);
+    const res = await authFetch("/api/Maintenance");
+const data = await res.json();
+setMaintenanceList(data);
     } catch (error) {
       console.error("Error fetching maintenance:", error);
     }
@@ -50,9 +50,9 @@ const Maintenance = () => {
     return maintenanceList.filter((item) => {
       const q = search.toLowerCase();
       return (
-        item.asset?.toLowerCase().includes(q) ||
-        item.id?.toLowerCase().includes(q) ||
-        item.status?.toLowerCase().includes(q)
+        String(item.storage?.name ?? "").toLowerCase().includes(q)||
+        String(item.id ?? "").toLowerCase().includes(q) ||
+        String(item.cost ?? "").toLowerCase().includes(q)
       );
     });
   }, [maintenanceList, search]);
@@ -69,10 +69,10 @@ const Maintenance = () => {
 
   const openEditModal = (item) => {
     reset({
-      asset: item.asset,
-      date: item.date,
+      asset: item.storage?.name || "",
+      date: item.date ? item.date.split("T")[0] : "",
       cost: item.cost,
-      status: item.status,
+      status: "Pending",
     });
     setEditingId(item.id);
     setIsOpen(true);
@@ -83,13 +83,14 @@ const Maintenance = () => {
     resetFormState();
   };
 
-  // ✅ حذف من السيرفر
   const handleDelete = async (id) => {
     if (!window.confirm("Are you sure?")) return;
 
     try {
-      await axios.delete(`${API_URL}/${id}`);
-      fetchMaintenance();
+     await authFetch(`/api/Maintenance/${id}`, {
+  method: "DELETE",
+});
+      await fetchMaintenance();
     } catch (error) {
       console.error("Delete error:", error);
     }
@@ -99,26 +100,35 @@ const Maintenance = () => {
     alert("Reset disabled لأن البيانات الآن من السيرفر ✅");
   };
 
-  // ✅ إضافة + تعديل
-  const onSubmit = async (data) => {
-    try {
-      if (editingId) {
-        await axios.put(`${API_URL}/${editingId}`, data);
-      } else {
-        await axios.post(API_URL, data);
-      }
+const onSubmit = async (data) => {
+  try {
+    const payload = {
+      date: data.date,
+      cost: Number(data.cost),
+      storageId: 1
+    };
 
-      fetchMaintenance();
-      closeModal();
-    } catch (error) {
-      console.error("Save error:", error);
+    if (editingId) {
+     await authFetch(`/api/Maintenance/${editingId}`, {
+  method: "PUT",
+  body: JSON.stringify(payload),
+});
+    } else {
+      await authFetch("/api/Maintenance", {
+  method: "POST",
+  body: JSON.stringify(payload),
+});
     }
-  };
 
-  const getStatusClass = (status) => {
-    if (status === "Completed") return "ui-success";
-    if (status === "Pending") return "ui-warning";
-    return "ui-danger";
+    await fetchMaintenance();
+    closeModal();
+  } catch (error) {
+    console.error("Save error:", error.response?.data || error);
+  }
+};
+
+  const getStatusClass = () => {
+    return "ui-warning";
   };
 
   return (
@@ -167,12 +177,12 @@ const Maintenance = () => {
               filtered.map((item) => (
                 <tr key={item.id}>
                   <td>{item.id}</td>
-                  <td>{item.asset}</td>
-                  <td>{item.date}</td>
-                  <td>{item.cost}</td>
+                  <td>{item.storage?.name || "Main Storage"}</td>
+                  <td>{item.date ? item.date.split("T")[0] : ""}</td>
+                  <td>${item.cost}</td>
                   <td>
-                    <span className={`ui-badge ${getStatusClass(item.status)}`}>
-                      {item.status}
+                    <span className={`ui-badge ${getStatusClass()}`}>
+                      Pending
                     </span>
                   </td>
                   <td>
@@ -250,7 +260,7 @@ const Maintenance = () => {
                 Cancel
               </button>
 
-              <button className="ui-btn-primary" type="submit">
+              <button className="ui-btn-primary" type="submit" disabled={isSubmitting}>
                 Save
               </button>
             </div>

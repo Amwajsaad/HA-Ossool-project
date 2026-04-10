@@ -17,7 +17,7 @@ const Header = () => {
         <div className={styles.profile}>
           <img src={profileImage} alt="User" className={styles.profileImage} />
           <div className={styles.profileInfo}>
-            <h4>{user?.name || user?.email || "User"}</h4>
+            <h4>{user?.username || user?.email || "User"}</h4>
             <p>Admin</p>
           </div>
         </div>
