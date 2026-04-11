@@ -33,7 +33,7 @@ const onSubmit = async (data) => {
 
   try {
     const response = await login({
-      email: data.email,
+      email: data.email.trim().toLowerCase(),
       password: data.password,
     });
 
