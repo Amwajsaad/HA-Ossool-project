@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import styles from "./Departments.module.css";
 import Modal from "../../components/Modal/Modal";
 import { departmentsSchema } from "./DepartmentsSchema";
+import Swal from "sweetalert2";
 
 const initialDepartments = [
   {
@@ -71,6 +72,11 @@ const Departments = () => {
     defaultValues,
   });
 
+  const swalButtons = {
+    confirmButtonColor: "#c62828",
+    cancelButtonColor: "#9e9e9e",
+  };
+
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(departments));
   }, [departments]);
@@ -113,59 +119,105 @@ const Departments = () => {
     resetFormState();
   };
 
-  const handleDelete = (id) => {
-    const confirmDelete = window.confirm(
-      "Are you sure you want to delete this department?"
-    );
-    if (!confirmDelete) return;
+  const handleDelete = async (id) => {
+    const result = await Swal.fire({
+      title: "Are you sure?",
+      text: "This department will be deleted permanently!",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Yes, delete it!",
+      cancelButtonText: "Cancel",
+      ...swalButtons,
+    });
+
+    if (!result.isConfirmed) return;
 
     setDepartments((prev) => prev.filter((item) => item.id !== id));
+
+    Swal.fire({
+      title: "Deleted!",
+      text: "Department deleted successfully.",
+      icon: "success",
+      confirmButtonColor: "#c62828",
+    });
   };
 
-  const handleReset = () => {
-    const confirmReset = window.confirm(
-      "This will reset departments to the default list. Continue?"
-    );
-    if (!confirmReset) return;
+  const handleReset = async () => {
+    const result = await Swal.fire({
+      title: "Reset Departments?",
+      text: "This will restore the default departments list.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Yes, reset",
+      cancelButtonText: "Cancel",
+      ...swalButtons,
+    });
+
+    if (!result.isConfirmed) return;
 
     setDepartments(initialDepartments);
     localStorage.removeItem(STORAGE_KEY);
+
+    Swal.fire({
+      title: "Reset Done!",
+      text: "Departments restored successfully.",
+      icon: "success",
+      confirmButtonColor: "#c62828",
+    });
   };
 
   const onSubmit = async (data) => {
-    console.log(data);
+    try {
+      if (editingId) {
+        setDepartments((prev) =>
+          prev.map((item) =>
+            item.id === editingId
+              ? {
+                  ...item,
+                  name: data.name.trim(),
+                  manager: data.manager.trim(),
+                  employees: Number(data.employees),
+                  assets: Number(data.assets),
+                  location: data.location.trim(),
+                }
+              : item
+          )
+        );
+      } else {
+        const nextIdNumber = departments.length + 1;
 
-    if (editingId) {
-      setDepartments((prev) =>
-        prev.map((item) =>
-          item.id === editingId
-            ? {
-                ...item,
-                name: data.name.trim(),
-                manager: data.manager.trim(),
-                employees: Number(data.employees),
-                assets: Number(data.assets),
-                location: data.location.trim(),
-              }
-            : item
-        )
-      );
-    } else {
-      const nextIdNumber = departments.length + 1;
+        const newDepartment = {
+          id: `D${String(nextIdNumber).padStart(3, "0")}`,
+          name: data.name.trim(),
+          manager: data.manager.trim(),
+          employees: Number(data.employees),
+          assets: Number(data.assets),
+          location: data.location.trim(),
+        };
 
-      const newDepartment = {
-        id: `D${String(nextIdNumber).padStart(3, "0")}`,
-        name: data.name.trim(),
-        manager: data.manager.trim(),
-        employees: Number(data.employees),
-        assets: Number(data.assets),
-        location: data.location.trim(),
-      };
+        setDepartments((prev) => [newDepartment, ...prev]);
+      }
 
-      setDepartments((prev) => [newDepartment, ...prev]);
+      closeModal();
+
+      Swal.fire({
+        title: "Success!",
+        text: editingId
+          ? "Department updated successfully."
+          : "Department added successfully.",
+        icon: "success",
+        confirmButtonColor: "#c62828",
+      });
+    } catch (error) {
+      console.error("Save error:", error);
+
+      Swal.fire({
+        title: "Error!",
+        text: "Something went wrong while saving.",
+        icon: "error",
+        confirmButtonColor: "#c62828",
+      });
     }
-
-    closeModal();
   };
 
   return (
@@ -288,9 +340,7 @@ const Departments = () => {
               <div className={styles.formGroup}>
                 <label>Employees Count</label>
                 <input
-                  className={`ui-input ${
-                    errors.employees ? styles.inputError : ""
-                  }`}
+                  className={`ui-input ${errors.employees ? styles.inputError : ""}`}
                   type="number"
                   placeholder="0"
                   {...register("employees")}
@@ -340,7 +390,11 @@ const Departments = () => {
                 type="submit"
                 disabled={isSubmitting}
               >
-                {editingId ? "Update Department" : "Save Department"}
+                {isSubmitting
+                  ? "Saving..."
+                  : editingId
+                  ? "Update Department"
+                  : "Save Department"}
               </button>
             </div>
           </form>

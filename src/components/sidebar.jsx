@@ -66,6 +66,15 @@ const Sidebar = () => {
 
           <div
             className={`${styles.sidebar__item} ${
+              isActive("/storage") ? styles.active : ""
+            }`}
+            onClick={() => navigate("/storage")}
+          >
+            Storage
+          </div>
+
+          <div
+            className={`${styles.sidebar__item} ${
               isActive("/employees") ? styles.active : ""
             }`}
             onClick={() => navigate("/employees")}

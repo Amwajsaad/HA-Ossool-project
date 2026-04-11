@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import styles from "./Categories.module.css";
 import Modal from "../../components/Modal/Modal";
 import { categoriesSchema } from "./CategoriesSchema";
+import Swal from "sweetalert2";
 
 const initialCategories = [
   {
@@ -66,6 +67,11 @@ const Categories = () => {
     defaultValues,
   });
 
+  const swalButtons = {
+    confirmButtonColor: "#c62828",
+    cancelButtonColor: "#9e9e9e",
+  };
+
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(categories));
   }, [categories]);
@@ -106,57 +112,103 @@ const Categories = () => {
     resetFormState();
   };
 
-  const handleDelete = (id) => {
-    const confirmDelete = window.confirm(
-      "Are you sure you want to delete this category?"
-    );
-    if (!confirmDelete) return;
+  const handleDelete = async (id) => {
+    const result = await Swal.fire({
+      title: "Are you sure?",
+      text: "This category will be deleted permanently!",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Yes, delete it!",
+      cancelButtonText: "Cancel",
+      ...swalButtons,
+    });
+
+    if (!result.isConfirmed) return;
 
     setCategories((prev) => prev.filter((item) => item.id !== id));
+
+    Swal.fire({
+      title: "Deleted!",
+      text: "Category deleted successfully.",
+      icon: "success",
+      confirmButtonColor: "#c62828",
+    });
   };
 
-  const handleReset = () => {
-    const confirmReset = window.confirm(
-      "This will reset categories to the default list. Continue?"
-    );
-    if (!confirmReset) return;
+  const handleReset = async () => {
+    const result = await Swal.fire({
+      title: "Reset Categories?",
+      text: "This will restore the default categories list.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Yes, reset",
+      cancelButtonText: "Cancel",
+      ...swalButtons,
+    });
+
+    if (!result.isConfirmed) return;
 
     setCategories(initialCategories);
     localStorage.removeItem(STORAGE_KEY);
+
+    Swal.fire({
+      title: "Reset Done!",
+      text: "Categories restored successfully.",
+      icon: "success",
+      confirmButtonColor: "#c62828",
+    });
   };
 
   const onSubmit = async (data) => {
-    console.log(data);
+    try {
+      if (editingId) {
+        setCategories((prev) =>
+          prev.map((item) =>
+            item.id === editingId
+              ? {
+                  ...item,
+                  name: data.name.trim(),
+                  description: data.description.trim(),
+                  assetsCount: Number(data.assetsCount),
+                  status: data.status,
+                }
+              : item
+          )
+        );
+      } else {
+        const nextIdNumber = categories.length + 1;
 
-    if (editingId) {
-      setCategories((prev) =>
-        prev.map((item) =>
-          item.id === editingId
-            ? {
-                ...item,
-                name: data.name.trim(),
-                description: data.description.trim(),
-                assetsCount: Number(data.assetsCount),
-                status: data.status,
-              }
-            : item
-        )
-      );
-    } else {
-      const nextIdNumber = categories.length + 1;
+        const newCategory = {
+          id: `C${String(nextIdNumber).padStart(3, "0")}`,
+          name: data.name.trim(),
+          description: data.description.trim(),
+          assetsCount: Number(data.assetsCount),
+          status: data.status,
+        };
 
-      const newCategory = {
-        id: `C${String(nextIdNumber).padStart(3, "0")}`,
-        name: data.name.trim(),
-        description: data.description.trim(),
-        assetsCount: Number(data.assetsCount),
-        status: data.status,
-      };
+        setCategories((prev) => [newCategory, ...prev]);
+      }
 
-      setCategories((prev) => [newCategory, ...prev]);
+      closeModal();
+
+      Swal.fire({
+        title: "Success!",
+        text: editingId
+          ? "Category updated successfully."
+          : "Category added successfully.",
+        icon: "success",
+        confirmButtonColor: "#c62828",
+      });
+    } catch (error) {
+      console.error("Save error:", error);
+
+      Swal.fire({
+        title: "Error!",
+        text: "Something went wrong while saving.",
+        icon: "error",
+        confirmButtonColor: "#c62828",
+      });
     }
-
-    closeModal();
   };
 
   const getStatusClass = (status) => {
@@ -273,9 +325,7 @@ const Categories = () => {
               <div className={styles.formGroup}>
                 <label>Assets Count</label>
                 <input
-                  className={`ui-input ${
-                    errors.assetsCount ? styles.inputError : ""
-                  }`}
+                  className={`ui-input ${errors.assetsCount ? styles.inputError : ""}`}
                   type="number"
                   placeholder="0"
                   {...register("assetsCount")}
@@ -290,9 +340,7 @@ const Categories = () => {
               <div className={styles.formGroupFull}>
                 <label>Description</label>
                 <input
-                  className={`ui-input ${
-                    errors.description ? styles.inputError : ""
-                  }`}
+                  className={`ui-input ${errors.description ? styles.inputError : ""}`}
                   placeholder="Description"
                   {...register("description")}
                 />
@@ -326,7 +374,11 @@ const Categories = () => {
                 type="submit"
                 disabled={isSubmitting}
               >
-                {editingId ? "Update Category" : "Save Category"}
+                {isSubmitting
+                  ? "Saving..."
+                  : editingId
+                  ? "Update Category"
+                  : "Save Category"}
               </button>
             </div>
           </form>

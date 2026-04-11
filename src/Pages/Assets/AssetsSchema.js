@@ -5,17 +5,11 @@ export const assetsSchema = z.object({
     .string()
     .min(2, "Asset name must be at least 2 characters."),
 
-  category: z
+  storageId: z
     .string()
-    .min(1, "Category is required."),
+    .min(1, "Storage is required."),
 
-  serialNumber: z
+  productTypeId: z
     .string()
-    .min(3, "Serial number must be at least 3 characters."),
-
-  purchaseDate: z
-    .string()
-    .min(1, "Purchase date is required."),
-
-  status: z.enum(["Available", "Assigned", "Maintenance"]),
+    .min(1, "Product type is required."),
 });

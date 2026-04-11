@@ -5,17 +5,17 @@ import styles from "./Maintenance.module.css";
 import Modal from "../../components/Modal/Modal";
 import { maintenanceSchema } from "./MaintenanceSchema";
 import { authFetch } from "../../services/AuthService";
+import Swal from "sweetalert2";
 
 const defaultValues = {
-  asset: "",
   date: "",
   cost: "",
   status: "Pending",
+  productId: "",
 };
 
-const API_URL = "http://localhost:5100/api/Maintenance";
-
 const Maintenance = () => {
+  const [products, setProducts] = useState([]);
   const [maintenanceList, setMaintenanceList] = useState([]);
   const [search, setSearch] = useState("");
   const [isOpen, setIsOpen] = useState(false);
@@ -34,15 +34,43 @@ const Maintenance = () => {
 
   useEffect(() => {
     fetchMaintenance();
+    fetchProducts();
   }, []);
+
+  const swalButtons = {
+    confirmButtonColor: "#c62828",
+    cancelButtonColor: "#9e9e9e",
+  };
 
   const fetchMaintenance = async () => {
     try {
-    const res = await authFetch("/api/Maintenance");
-const data = await res.json();
-setMaintenanceList(data);
+      const res = await authFetch("/api/Maintenance");
+      const data = await res.json();
+      setMaintenanceList(data);
     } catch (error) {
       console.error("Error fetching maintenance:", error);
+      Swal.fire({
+        title: "Error!",
+        text: "Something went wrong while loading maintenance data.",
+        icon: "error",
+        confirmButtonColor: "#c62828",
+      });
+    }
+  };
+
+  const fetchProducts = async () => {
+    try {
+      const res = await authFetch("/api/Product");
+      const data = await res.json();
+      setProducts(data);
+    } catch (error) {
+      console.error("Error fetching products:", error);
+      Swal.fire({
+        title: "Error!",
+        text: "Something went wrong while loading assets.",
+        icon: "error",
+        confirmButtonColor: "#c62828",
+      });
     }
   };
 
@@ -50,7 +78,9 @@ setMaintenanceList(data);
     return maintenanceList.filter((item) => {
       const q = search.toLowerCase();
       return (
-        String(item.storage?.name ?? "").toLowerCase().includes(q)||
+        String(item.productName ?? "").toLowerCase().includes(q) ||
+        String(item.storageName ?? "").toLowerCase().includes(q) ||
+        String(item.productTypeName ?? "").toLowerCase().includes(q) ||
         String(item.id ?? "").toLowerCase().includes(q) ||
         String(item.cost ?? "").toLowerCase().includes(q)
       );
@@ -69,10 +99,10 @@ setMaintenanceList(data);
 
   const openEditModal = (item) => {
     reset({
-      asset: item.storage?.name || "",
       date: item.date ? item.date.split("T")[0] : "",
       cost: item.cost,
       status: "Pending",
+      productId: String(item.productId || ""),
     });
     setEditingId(item.id);
     setIsOpen(true);
@@ -84,48 +114,92 @@ setMaintenanceList(data);
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure?")) return;
+    const result = await Swal.fire({
+      title: "Are you sure?",
+      text: "This maintenance record will be deleted permanently!",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Yes, delete it!",
+      cancelButtonText: "Cancel",
+      ...swalButtons,
+    });
+
+    if (!result.isConfirmed) return;
 
     try {
-     await authFetch(`/api/Maintenance/${id}`, {
-  method: "DELETE",
-});
+      await authFetch(`/api/Maintenance/${id}`, {
+        method: "DELETE",
+      });
+
       await fetchMaintenance();
+
+      Swal.fire({
+        title: "Deleted!",
+        text: "Maintenance deleted successfully.",
+        icon: "success",
+        confirmButtonColor: "#c62828",
+      });
     } catch (error) {
       console.error("Delete error:", error);
+      Swal.fire({
+        title: "Error!",
+        text: "Something went wrong while deleting.",
+        icon: "error",
+        confirmButtonColor: "#c62828",
+      });
     }
   };
 
-  const handleReset = () => {
-    alert("Reset disabled لأن البيانات الآن من السيرفر ✅");
+  const handleReset = async () => {
+    await Swal.fire({
+      title: "Notice",
+      text: "Reset is disabled because data is now loaded from the server.",
+      icon: "info",
+      confirmButtonColor: "#c62828",
+    });
   };
 
-const onSubmit = async (data) => {
-  try {
-    const payload = {
-      date: data.date,
-      cost: Number(data.cost),
-      storageId: 1
-    };
+  const onSubmit = async (data) => {
+    try {
+      const payload = {
+        date: data.date,
+        cost: Number(data.cost),
+        productId: Number(data.productId),
+      };
 
-    if (editingId) {
-     await authFetch(`/api/Maintenance/${editingId}`, {
-  method: "PUT",
-  body: JSON.stringify(payload),
-});
-    } else {
-      await authFetch("/api/Maintenance", {
-  method: "POST",
-  body: JSON.stringify(payload),
-});
+      if (editingId) {
+        await authFetch(`/api/Maintenance/${editingId}`, {
+          method: "PUT",
+          body: JSON.stringify(payload),
+        });
+      } else {
+        await authFetch("/api/Maintenance", {
+          method: "POST",
+          body: JSON.stringify(payload),
+        });
+      }
+
+      await fetchMaintenance();
+      closeModal();
+
+      Swal.fire({
+        title: "Success!",
+        text: editingId
+          ? "Maintenance updated successfully."
+          : "Maintenance added successfully.",
+        icon: "success",
+        confirmButtonColor: "#c62828",
+      });
+    } catch (error) {
+      console.error("Save error:", error);
+      Swal.fire({
+        title: "Error!",
+        text: "Something went wrong while saving.",
+        icon: "error",
+        confirmButtonColor: "#c62828",
+      });
     }
-
-    await fetchMaintenance();
-    closeModal();
-  } catch (error) {
-    console.error("Save error:", error.response?.data || error);
-  }
-};
+  };
 
   const getStatusClass = () => {
     return "ui-warning";
@@ -145,7 +219,7 @@ const onSubmit = async (data) => {
           </button>
 
           <button className="ui-btn-primary" onClick={openAddModal} type="button">
-            ➕ Add
+            ➕ Add Maintenance
           </button>
         </div>
       </div>
@@ -165,6 +239,8 @@ const onSubmit = async (data) => {
             <tr>
               <th>ID</th>
               <th>Asset</th>
+              <th>Storage</th>
+              <th>Type</th>
               <th>Date</th>
               <th>Cost</th>
               <th>Status</th>
@@ -177,7 +253,9 @@ const onSubmit = async (data) => {
               filtered.map((item) => (
                 <tr key={item.id}>
                   <td>{item.id}</td>
-                  <td>{item.storage?.name || "Main Storage"}</td>
+                  <td>{item.productName || "-"}</td>
+                  <td>{item.storageName || "-"}</td>
+                  <td>{item.productTypeName || "-"}</td>
                   <td>{item.date ? item.date.split("T")[0] : ""}</td>
                   <td>${item.cost}</td>
                   <td>
@@ -191,6 +269,7 @@ const onSubmit = async (data) => {
                         className="ui-btn-icon"
                         onClick={() => openEditModal(item)}
                         type="button"
+                        title="Edit"
                       >
                         ✏️
                       </button>
@@ -199,6 +278,7 @@ const onSubmit = async (data) => {
                         className="ui-btn-icon"
                         onClick={() => handleDelete(item.id)}
                         type="button"
+                        title="Delete"
                       >
                         🗑️
                       </button>
@@ -208,8 +288,8 @@ const onSubmit = async (data) => {
               ))
             ) : (
               <tr>
-                <td colSpan="6" className="ui-empty">
-                  No maintenance found
+                <td colSpan="8" className="ui-empty">
+                  No maintenance records found yet.
                 </td>
               </tr>
             )}
@@ -225,24 +305,44 @@ const onSubmit = async (data) => {
           <form onSubmit={handleSubmit(onSubmit)}>
             <div className={styles.modalGrid}>
               <div className={styles.formGroup}>
-                <label>Asset Name</label>
-                <input
-                  className={`ui-input ${errors.asset ? styles.inputError : ""}`}
-                  {...register("asset")}
-                />
-                {errors.asset && (
-                  <span className={styles.errorText}>{errors.asset.message}</span>
+                <label>Asset</label>
+                <select
+                  className={`ui-input ${errors.productId ? styles.inputError : ""}`}
+                  {...register("productId")}
+                >
+                  <option value="">Select asset</option>
+                  {products.map((product) => (
+                    <option key={product.id} value={product.id}>
+                      {product.name}
+                    </option>
+                  ))}
+                </select>
+                {errors.productId && (
+                  <span className={styles.errorText}>{errors.productId.message}</span>
                 )}
               </div>
 
               <div className={styles.formGroup}>
                 <label>Date</label>
-                <input type="date" className="ui-input" {...register("date")} />
+                <input
+                  type="date"
+                  className={`ui-input ${errors.date ? styles.inputError : ""}`}
+                  {...register("date")}
+                />
+                {errors.date && (
+                  <span className={styles.errorText}>{errors.date.message}</span>
+                )}
               </div>
 
               <div className={styles.formGroup}>
                 <label>Cost</label>
-                <input className="ui-input" {...register("cost")} />
+                <input
+                  className={`ui-input ${errors.cost ? styles.inputError : ""}`}
+                  {...register("cost")}
+                />
+                {errors.cost && (
+                  <span className={styles.errorText}>{errors.cost.message}</span>
+                )}
               </div>
 
               <div className={styles.formGroup}>
@@ -261,7 +361,7 @@ const onSubmit = async (data) => {
               </button>
 
               <button className="ui-btn-primary" type="submit" disabled={isSubmitting}>
-                Save
+                {isSubmitting ? "Saving..." : "Save"}
               </button>
             </div>
           </form>

@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import styles from "./Locations.module.css";
 import Modal from "../../components/Modal/Modal";
 import { locationsSchema } from "./LocationsSchema";
+import Swal from "sweetalert2";
 
 const initialLocations = [
   {
@@ -71,6 +72,11 @@ const Locations = () => {
     defaultValues,
   });
 
+  const swalButtons = {
+    confirmButtonColor: "#c62828",
+    cancelButtonColor: "#9e9e9e",
+  };
+
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(locations));
   }, [locations]);
@@ -112,59 +118,105 @@ const Locations = () => {
     resetFormState();
   };
 
-  const handleDelete = (id) => {
-    const confirmDelete = window.confirm(
-      "Are you sure you want to delete this location?"
-    );
-    if (!confirmDelete) return;
+  const handleDelete = async (id) => {
+    const result = await Swal.fire({
+      title: "Are you sure?",
+      text: "This location will be deleted permanently!",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Yes, delete it!",
+      cancelButtonText: "Cancel",
+      ...swalButtons,
+    });
+
+    if (!result.isConfirmed) return;
 
     setLocations((prev) => prev.filter((item) => item.id !== id));
+
+    Swal.fire({
+      title: "Deleted!",
+      text: "Location deleted successfully.",
+      icon: "success",
+      confirmButtonColor: "#c62828",
+    });
   };
 
-  const handleReset = () => {
-    const confirmReset = window.confirm(
-      "This will reset locations to the default list. Continue?"
-    );
-    if (!confirmReset) return;
+  const handleReset = async () => {
+    const result = await Swal.fire({
+      title: "Reset Locations?",
+      text: "This will restore the default locations list.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Yes, reset",
+      cancelButtonText: "Cancel",
+      ...swalButtons,
+    });
+
+    if (!result.isConfirmed) return;
 
     setLocations(initialLocations);
     localStorage.removeItem(STORAGE_KEY);
+
+    Swal.fire({
+      title: "Reset Done!",
+      text: "Locations restored successfully.",
+      icon: "success",
+      confirmButtonColor: "#c62828",
+    });
   };
 
   const onSubmit = async (data) => {
-    console.log(data);
+    try {
+      if (editingId) {
+        setLocations((prev) =>
+          prev.map((item) =>
+            item.id === editingId
+              ? {
+                  ...item,
+                  name: data.name.trim(),
+                  city: data.city.trim(),
+                  assets: Number(data.assets),
+                  departments: Number(data.departments),
+                  status: data.status,
+                }
+              : item
+          )
+        );
+      } else {
+        const nextIdNumber = locations.length + 1;
 
-    if (editingId) {
-      setLocations((prev) =>
-        prev.map((item) =>
-          item.id === editingId
-            ? {
-                ...item,
-                name: data.name.trim(),
-                city: data.city.trim(),
-                assets: Number(data.assets),
-                departments: Number(data.departments),
-                status: data.status,
-              }
-            : item
-        )
-      );
-    } else {
-      const nextIdNumber = locations.length + 1;
+        const newLocation = {
+          id: `L${String(nextIdNumber).padStart(3, "0")}`,
+          name: data.name.trim(),
+          city: data.city.trim(),
+          assets: Number(data.assets),
+          departments: Number(data.departments),
+          status: data.status,
+        };
 
-      const newLocation = {
-        id: `L${String(nextIdNumber).padStart(3, "0")}`,
-        name: data.name.trim(),
-        city: data.city.trim(),
-        assets: Number(data.assets),
-        departments: Number(data.departments),
-        status: data.status,
-      };
+        setLocations((prev) => [newLocation, ...prev]);
+      }
 
-      setLocations((prev) => [newLocation, ...prev]);
+      closeModal();
+
+      Swal.fire({
+        title: "Success!",
+        text: editingId
+          ? "Location updated successfully."
+          : "Location added successfully.",
+        icon: "success",
+        confirmButtonColor: "#c62828",
+      });
+    } catch (error) {
+      console.error("Save error:", error);
+
+      Swal.fire({
+        title: "Error!",
+        text: "Something went wrong while saving.",
+        icon: "error",
+        confirmButtonColor: "#c62828",
+      });
     }
-
-    closeModal();
   };
 
   const getStatusClass = (status) => {
@@ -308,9 +360,7 @@ const Locations = () => {
               <div className={styles.formGroup}>
                 <label>Departments Count</label>
                 <input
-                  className={`ui-input ${
-                    errors.departments ? styles.inputError : ""
-                  }`}
+                  className={`ui-input ${errors.departments ? styles.inputError : ""}`}
                   type="number"
                   placeholder="0"
                   {...register("departments")}
@@ -345,7 +395,11 @@ const Locations = () => {
                 type="submit"
                 disabled={isSubmitting}
               >
-                {editingId ? "Update Location" : "Save Location"}
+                {isSubmitting
+                  ? "Saving..."
+                  : editingId
+                  ? "Update Location"
+                  : "Save Location"}
               </button>
             </div>
           </form>

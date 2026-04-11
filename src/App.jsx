@@ -13,6 +13,7 @@ import Departments from "./Pages/Departments/Departments";
 import Categories from "./Pages/Categories/Categories";
 import Locations from "./Pages/Locations/Locations";
 import Settings from "./Pages/Settings/Settings";
+import Storage from "./Pages/Storage/Storage";
 
 function App() {
   return (
@@ -33,6 +34,7 @@ function App() {
             <Route path="/categories" element={<Categories />} />
             <Route path="/locations" element={<Locations />} />
             <Route path="/settings" element={<Settings />} />
+            <Route path="/storage" element={<Storage />} />
           </Route>
         </Route>
       </Routes>

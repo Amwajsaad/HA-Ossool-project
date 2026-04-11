@@ -4,39 +4,19 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import styles from "./Assets.module.css";
 import Modal from "../../components/Modal/Modal";
 import { assetsSchema } from "./AssetsSchema";
-
-const initialAssets = [
-  {
-    id: "A001",
-    name: "Laptop",
-    location: "HR Office",
-    status: "Active",
-    lastMaintenance: "12/02/2026",
-  },
-  {
-    id: "A002",
-    name: "Printer",
-    location: "Main Office",
-    status: "Inactive",
-    lastMaintenance: "10/02/2026",
-  },
-];
-
-const STORAGE_KEY = "assets_data";
+import { authFetch } from "../../services/AuthService";
+import Swal from "sweetalert2";
 
 const defaultValues = {
   name: "",
-  location: "",
-  status: "Active",
-  lastMaintenance: "",
+  storageId: "",
+  productTypeId: "",
 };
 
 const Assets = () => {
-  const [assets, setAssets] = useState(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    return saved ? JSON.parse(saved) : initialAssets;
-  });
-
+  const [assets, setAssets] = useState([]);
+  const [storages, setStorages] = useState([]);
+  const [productTypes, setProductTypes] = useState([]);
   const [search, setSearch] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -53,15 +33,71 @@ const Assets = () => {
   });
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(assets));
-  }, [assets]);
+    fetchAssets();
+    fetchStorages();
+    fetchProductTypes();
+  }, []);
+
+  const swalButtons = {
+    confirmButtonColor: "#c62828",
+    cancelButtonColor: "#9e9e9e",
+  };
+
+  const fetchAssets = async () => {
+    try {
+      const res = await authFetch("/api/Product");
+      const data = await res.json();
+      setAssets(data);
+    } catch (error) {
+      console.error("Error fetching assets:", error);
+      Swal.fire({
+        title: "Error!",
+        text: "Something went wrong while loading assets.",
+        icon: "error",
+        confirmButtonColor: "#c62828",
+      });
+    }
+  };
+
+  const fetchStorages = async () => {
+    try {
+      const res = await authFetch("/api/Storage");
+      const data = await res.json();
+      setStorages(data);
+    } catch (error) {
+      console.error("Error fetching storages:", error);
+      Swal.fire({
+        title: "Error!",
+        text: "Something went wrong while loading storages.",
+        icon: "error",
+        confirmButtonColor: "#c62828",
+      });
+    }
+  };
+
+  const fetchProductTypes = async () => {
+    try {
+      const res = await authFetch("/api/ProductType");
+      const data = await res.json();
+      setProductTypes(data);
+    } catch (error) {
+      console.error("Error fetching product types:", error);
+      Swal.fire({
+        title: "Error!",
+        text: "Something went wrong while loading product types.",
+        icon: "error",
+        confirmButtonColor: "#c62828",
+      });
+    }
+  };
 
   const filtered = useMemo(() => {
     return assets.filter((item) => {
       const q = search.toLowerCase();
       return (
-        item.name.toLowerCase().includes(q) ||
-        item.location.toLowerCase().includes(q)
+        String(item.name ?? "").toLowerCase().includes(q) ||
+        String(item.storage?.name ?? "").toLowerCase().includes(q) ||
+        String(item.productType?.name ?? "").toLowerCase().includes(q)
       );
     });
   }, [assets, search]);
@@ -74,10 +110,9 @@ const Assets = () => {
 
   const openEdit = (item) => {
     reset({
-      name: item.name,
-      location: item.location,
-      status: item.status,
-      lastMaintenance: item.lastMaintenance,
+      name: item.name || "",
+      storageId: String(item.storageId || ""),
+      productTypeId: String(item.productTypeId || ""),
     });
     setEditingId(item.id);
     setIsOpen(true);
@@ -89,44 +124,84 @@ const Assets = () => {
     setEditingId(null);
   };
 
-  const handleDelete = (id) => {
-    setAssets((prev) => prev.filter((item) => item.id !== id));
+  const handleDelete = async (id) => {
+    const result = await Swal.fire({
+      title: "Are you sure?",
+      text: "This asset will be deleted permanently!",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Yes, delete it!",
+      cancelButtonText: "Cancel",
+      ...swalButtons,
+    });
+
+    if (!result.isConfirmed) return;
+
+    try {
+      await authFetch(`/api/Product/${id}`, {
+        method: "DELETE",
+      });
+
+      await fetchAssets();
+
+      Swal.fire({
+        title: "Deleted!",
+        text: "Asset deleted successfully.",
+        icon: "success",
+        confirmButtonColor: "#c62828",
+      });
+    } catch (error) {
+      console.error("Delete error:", error);
+      Swal.fire({
+        title: "Error!",
+        text: "Something went wrong while deleting.",
+        icon: "error",
+        confirmButtonColor: "#c62828",
+      });
+    }
   };
 
   const onSubmit = async (data) => {
-    console.log(data);
-
-    if (editingId) {
-      setAssets((prev) =>
-        prev.map((item) =>
-          item.id === editingId
-            ? {
-                ...item,
-                name: data.name.trim(),
-                location: data.location.trim(),
-                status: data.status,
-                lastMaintenance: data.lastMaintenance.trim(),
-              }
-            : item
-        )
-      );
-    } else {
-      const newAsset = {
-        id: `A${Date.now()}`,
+    try {
+      const payload = {
         name: data.name.trim(),
-        location: data.location.trim(),
-        status: data.status,
-        lastMaintenance: data.lastMaintenance.trim(),
+        storageId: Number(data.storageId),
+        productTypeId: Number(data.productTypeId),
       };
 
-      setAssets((prev) => [newAsset, ...prev]);
+      if (editingId) {
+        await authFetch(`/api/Product/${editingId}`, {
+          method: "PUT",
+          body: JSON.stringify(payload),
+        });
+      } else {
+        await authFetch("/api/Product", {
+          method: "POST",
+          body: JSON.stringify(payload),
+        });
+      }
+
+      await fetchAssets();
+      closeModal();
+
+      Swal.fire({
+        title: "Success!",
+        text: editingId
+          ? "Asset updated successfully."
+          : "Asset added successfully.",
+        icon: "success",
+        confirmButtonColor: "#c62828",
+      });
+    } catch (error) {
+      console.error("Save error:", error);
+      Swal.fire({
+        title: "Error!",
+        text: "Something went wrong while saving.",
+        icon: "error",
+        confirmButtonColor: "#c62828",
+      });
     }
-
-    closeModal();
   };
-
-  const getStatusClass = (status) =>
-    status === "Active" ? "ui-success" : "ui-danger";
 
   return (
     <div className="ui-page">
@@ -155,9 +230,8 @@ const Assets = () => {
           <thead>
             <tr>
               <th>Name</th>
-              <th>Location</th>
-              <th>Status</th>
-              <th>Last Maintenance</th>
+              <th>Storage</th>
+              <th>Product Type</th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -167,13 +241,8 @@ const Assets = () => {
               filtered.map((item) => (
                 <tr key={item.id}>
                   <td>{item.name}</td>
-                  <td>{item.location}</td>
-                  <td>
-                    <span className={`ui-badge ${getStatusClass(item.status)}`}>
-                      {item.status}
-                    </span>
-                  </td>
-                  <td>{item.lastMaintenance}</td>
+                  <td>{item.storage?.name || "-"}</td>
+                  <td>{item.productType?.name || "-"}</td>
                   <td>
                     <div className={styles.actions}>
                       <button
@@ -184,6 +253,7 @@ const Assets = () => {
                       >
                         ✏️
                       </button>
+
                       <button
                         className="ui-btn-icon"
                         onClick={() => handleDelete(item.id)}
@@ -198,8 +268,8 @@ const Assets = () => {
               ))
             ) : (
               <tr>
-                <td colSpan="5" className="ui-empty">
-                  No assets found — start by adding one.
+                <td colSpan="4" className="ui-empty">
+                  No assets found yet. Start by adding one.
                 </td>
               </tr>
             )}
@@ -213,44 +283,65 @@ const Assets = () => {
           onClose={closeModal}
         >
           <form onSubmit={handleSubmit(onSubmit)}>
-            <input
-              className="ui-input"
-              placeholder="Name"
-              {...register("name")}
-            />
-            {errors.name && <p className={styles.errorText}>{errors.name.message}</p>}
+            <div className={styles.modalGrid}>
+              <div className={styles.formGroup}>
+                <label>Asset Name</label>
+                <input
+                  className={`ui-input ${errors.name ? styles.inputError : ""}`}
+                  placeholder="Asset name"
+                  {...register("name")}
+                />
+                {errors.name && (
+                  <p className={styles.errorText}>{errors.name.message}</p>
+                )}
+              </div>
 
-            <input
-              className="ui-input"
-              placeholder="Location"
-              {...register("location")}
-            />
-            {errors.location && (
-              <p className={styles.errorText}>{errors.location.message}</p>
-            )}
+              <div className={styles.formGroup}>
+                <label>Storage</label>
+                <select
+                  className={`ui-input ${errors.storageId ? styles.inputError : ""}`}
+                  {...register("storageId")}
+                >
+                  <option value="">Select storage</option>
+                  {storages.map((storage) => (
+                    <option key={storage.id} value={storage.id}>
+                      {storage.name}
+                    </option>
+                  ))}
+                </select>
+                {errors.storageId && (
+                  <p className={styles.errorText}>{errors.storageId.message}</p>
+                )}
+              </div>
 
-            <input
-              className="ui-input"
-              placeholder="DD/MM/YYYY" 
-              type="date"
-              {...register("lastMaintenance")}
-            />
-            {errors.lastMaintenance && (
-              <p className={styles.errorText}>{errors.lastMaintenance.message}</p>
-            )}
+              <div className={styles.formGroup}>
+                <label>Product Type</label>
+                <select
+                  className={`ui-input ${errors.productTypeId ? styles.inputError : ""}`}
+                  {...register("productTypeId")}
+                >
+                  <option value="">Select product type</option>
+                  {productTypes.map((type) => (
+                    <option key={type.id} value={type.id}>
+                      {type.name}
+                    </option>
+                  ))}
+                </select>
+                {errors.productTypeId && (
+                  <p className={styles.errorText}>{errors.productTypeId.message}</p>
+                )}
+              </div>
+            </div>
 
-            <select className="ui-input" {...register("status")}>
-              <option value="Active">Active</option>
-              <option value="Inactive">Inactive</option>
-            </select>
+            <div className={styles.modalActions}>
+              <button className="ui-btn-secondary" onClick={closeModal} type="button">
+                Cancel
+              </button>
 
-            <button
-              className="ui-btn-primary"
-              type="submit"
-              disabled={isSubmitting}
-            >
-              {editingId ? "Update Asset" : "Save Asset"}
-            </button>
+              <button className="ui-btn-primary" type="submit" disabled={isSubmitting}>
+                {isSubmitting ? "Saving..." : editingId ? "Update Asset" : "Save Asset"}
+              </button>
+            </div>
           </form>
         </Modal>
       )}

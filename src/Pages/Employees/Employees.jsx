@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import styles from "./Employees.module.css";
 import Modal from "../../components/Modal/Modal";
 import { employeesSchema } from "./EmployeesSchema";
+import Swal from "sweetalert2";
 
 const initialEmployees = [
   {
@@ -76,6 +77,11 @@ const Employees = () => {
     defaultValues,
   });
 
+  const swalButtons = {
+    confirmButtonColor: "#c62828",
+    cancelButtonColor: "#9e9e9e",
+  };
+
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(employees));
   }, [employees]);
@@ -121,61 +127,107 @@ const Employees = () => {
     resetFormState();
   };
 
-  const handleDelete = (id) => {
-    const confirmDelete = window.confirm(
-      "Are you sure you want to delete this employee?"
-    );
-    if (!confirmDelete) return;
+  const handleDelete = async (id) => {
+    const result = await Swal.fire({
+      title: "Are you sure?",
+      text: "This employee will be deleted permanently!",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Yes, delete it!",
+      cancelButtonText: "Cancel",
+      ...swalButtons,
+    });
+
+    if (!result.isConfirmed) return;
 
     setEmployees((prev) => prev.filter((item) => item.id !== id));
+
+    Swal.fire({
+      title: "Deleted!",
+      text: "Employee deleted successfully.",
+      icon: "success",
+      confirmButtonColor: "#c62828",
+    });
   };
 
-  const handleReset = () => {
-    const confirmReset = window.confirm(
-      "This will reset employees to the default list. Continue?"
-    );
-    if (!confirmReset) return;
+  const handleReset = async () => {
+    const result = await Swal.fire({
+      title: "Reset Employees?",
+      text: "This will restore the default employees list.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Yes, reset",
+      cancelButtonText: "Cancel",
+      ...swalButtons,
+    });
+
+    if (!result.isConfirmed) return;
 
     setEmployees(initialEmployees);
     localStorage.removeItem(STORAGE_KEY);
+
+    Swal.fire({
+      title: "Reset Done!",
+      text: "Employees restored successfully.",
+      icon: "success",
+      confirmButtonColor: "#c62828",
+    });
   };
 
   const onSubmit = async (data) => {
-    console.log(data);
+    try {
+      if (editingId) {
+        setEmployees((prev) =>
+          prev.map((item) =>
+            item.id === editingId
+              ? {
+                  ...item,
+                  name: data.name.trim(),
+                  department: data.department.trim(),
+                  phone: data.phone.trim(),
+                  asset: data.asset.trim(),
+                  branch: data.branch.trim(),
+                  status: data.status,
+                }
+              : item
+          )
+        );
+      } else {
+        const nextIdNumber = employees.length + 1;
 
-    if (editingId) {
-      setEmployees((prev) =>
-        prev.map((item) =>
-          item.id === editingId
-            ? {
-                ...item,
-                name: data.name.trim(),
-                department: data.department.trim(),
-                phone: data.phone.trim(),
-                asset: data.asset.trim(),
-                branch: data.branch.trim(),
-                status: data.status,
-              }
-            : item
-        )
-      );
-    } else {
-      const nextIdNumber = employees.length + 1;
+        const newEmployee = {
+          id: `E${String(nextIdNumber).padStart(3, "0")}`,
+          name: data.name.trim(),
+          department: data.department.trim(),
+          phone: data.phone.trim(),
+          asset: data.asset.trim(),
+          branch: data.branch.trim(),
+          status: data.status,
+        };
 
-      const newEmployee = {
-        id: `E${String(nextIdNumber).padStart(3, "0")}`,
-        name: data.name.trim(),
-        department: data.department.trim(),
-        phone: data.phone.trim(),
-        asset: data.asset.trim(),
-        branch: data.branch.trim(),
-        status: data.status,
-      };
+        setEmployees((prev) => [newEmployee, ...prev]);
+      }
 
-      setEmployees((prev) => [newEmployee, ...prev]);
+      closeModal();
+
+      Swal.fire({
+        title: "Success!",
+        text: editingId
+          ? "Employee updated successfully."
+          : "Employee added successfully.",
+        icon: "success",
+        confirmButtonColor: "#c62828",
+      });
+    } catch (error) {
+      console.error("Save error:", error);
+
+      Swal.fire({
+        title: "Error!",
+        text: "Something went wrong while saving.",
+        icon: "error",
+        confirmButtonColor: "#c62828",
+      });
     }
-
-    closeModal();
   };
 
   const getStatusClass = (status) => {
@@ -296,16 +348,12 @@ const Employees = () => {
               <div className={styles.formGroup}>
                 <label>Department</label>
                 <input
-                  className={`ui-input ${
-                    errors.department ? styles.inputError : ""
-                  }`}
+                  className={`ui-input ${errors.department ? styles.inputError : ""}`}
                   placeholder="Department"
                   {...register("department")}
                 />
                 {errors.department && (
-                  <span className={styles.errorText}>
-                    {errors.department.message}
-                  </span>
+                  <span className={styles.errorText}>{errors.department.message}</span>
                 )}
               </div>
 
@@ -368,7 +416,11 @@ const Employees = () => {
                 type="submit"
                 disabled={isSubmitting}
               >
-                {editingId ? "Update Employee" : "Save Employee"}
+                {isSubmitting
+                  ? "Saving..."
+                  : editingId
+                  ? "Update Employee"
+                  : "Save Employee"}
               </button>
             </div>
           </form>

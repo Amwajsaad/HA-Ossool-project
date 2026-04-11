@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import styles from "./Settings.module.css";
 import { settingsSchema } from "./SettingsSchema";
+import Swal from "sweetalert2";
 
 const defaultSettings = {
   companyName: "AH-Ossooll",
@@ -15,8 +16,6 @@ const defaultSettings = {
 const STORAGE_KEY = "settings_data";
 
 const Settings = () => {
-  const [savedMessage, setSavedMessage] = useState("");
-
   const savedSettings = localStorage.getItem(STORAGE_KEY);
   const initialValues = savedSettings ? JSON.parse(savedSettings) : defaultSettings;
 
@@ -31,6 +30,11 @@ const Settings = () => {
     defaultValues: initialValues,
   });
 
+  const swalButtons = {
+    confirmButtonColor: "#c62828",
+    cancelButtonColor: "#9e9e9e",
+  };
+
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
@@ -39,30 +43,49 @@ const Settings = () => {
   }, [reset]);
 
   const onSubmit = async (data) => {
-    console.log(data);
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-    setSavedMessage("Settings saved successfully.");
+      Swal.fire({
+        title: "Success!",
+        text: "Settings saved successfully.",
+        icon: "success",
+        confirmButtonColor: "#c62828",
+      });
+    } catch (error) {
+      console.error("Save error:", error);
 
-    setTimeout(() => {
-      setSavedMessage("");
-    }, 2500);
+      Swal.fire({
+        title: "Error!",
+        text: "Something went wrong while saving settings.",
+        icon: "error",
+        confirmButtonColor: "#c62828",
+      });
+    }
   };
 
-  const handleReset = () => {
-    const confirmReset = window.confirm(
-      "This will reset settings to default values. Continue?"
-    );
+  const handleReset = async () => {
+    const result = await Swal.fire({
+      title: "Reset Settings?",
+      text: "This will restore the default settings.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Yes, reset",
+      cancelButtonText: "Cancel",
+      ...swalButtons,
+    });
 
-    if (!confirmReset) return;
+    if (!result.isConfirmed) return;
 
     reset(defaultSettings);
     localStorage.removeItem(STORAGE_KEY);
-    setSavedMessage("Settings reset to default.");
 
-    setTimeout(() => {
-      setSavedMessage("");
-    }, 2500);
+    Swal.fire({
+      title: "Reset Done!",
+      text: "Settings restored successfully.",
+      icon: "success",
+      confirmButtonColor: "#c62828",
+    });
   };
 
   return (
@@ -85,12 +108,10 @@ const Settings = () => {
             form="settings-form"
             disabled={isSubmitting}
           >
-            Save Changes
+            {isSubmitting ? "Saving..." : "Save Changes"}
           </button>
         </div>
       </div>
-
-      {savedMessage && <div className={styles.successMessage}>{savedMessage}</div>}
 
       <form id="settings-form" onSubmit={handleSubmit(onSubmit)}>
         <div className={styles.settingsGrid}>
