@@ -43,3 +43,8 @@
   font-weight: 700;
   text-decoration: none;
 }
+.successText {
+  color: #1b8a3d;
+  font-size: 14px;
+  margin: 8px 0;
+}

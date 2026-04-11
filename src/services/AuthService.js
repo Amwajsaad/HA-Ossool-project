@@ -21,14 +21,21 @@ export const register = async (data) => {
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify(data),
+    body: JSON.stringify({
+      firstName: data.firstName,
+      lastName: data.lastName,
+      username: data.username,
+      email: data.email,
+      password: data.password,
+    }),
   });
 
   return response.json();
 };
 
 export const authFetch = (url, options = {}) => {
-  const token = localStorage.getItem("token");
+  const token =
+    localStorage.getItem("token") || sessionStorage.getItem("token");
 
   return fetch(`${API_URL}${url}`, {
     ...options,
