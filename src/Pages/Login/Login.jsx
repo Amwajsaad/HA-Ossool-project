@@ -28,7 +28,7 @@ const Login = () => {
     },
   });
 
-const onSubmit = async (data) => {
+ const onSubmit = async (data) => {
   setLoginError("");
 
   try {
@@ -39,12 +39,20 @@ const onSubmit = async (data) => {
 
     console.log("Login Response:", response);
 
-    
     if (response && response.token) {
       localStorage.setItem("token", response.token);
-      localStorage.setItem("currentUser", JSON.stringify(response));
 
-      navigate("/Home"); 
+      const currentUser = {
+        firstName: response.firstName || "",
+        lastName: response.lastName || "",
+        username: response.username || response.email || "User",
+        email: response.email || data.email.trim().toLowerCase(),
+        role: response.role || "Admin",
+      };
+
+      localStorage.setItem("currentUser", JSON.stringify(currentUser));
+
+      navigate("/Home");
     } else {
       setLoginError(response?.message || "Login failed");
     }
@@ -123,3 +131,4 @@ const onSubmit = async (data) => {
 };
 
 export default Login;
+

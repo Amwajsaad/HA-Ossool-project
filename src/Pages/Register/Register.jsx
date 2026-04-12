@@ -38,17 +38,32 @@ const Register = () => {
     setRegisterSuccess("");
 
     try {
-      const response = await registerUser({
+      const userData = {
         firstName: data.firstName.trim(),
         lastName: data.lastName.trim(),
         username: data.username.trim(),
         email: data.email.trim().toLowerCase(),
         password: data.password,
-      });
+        role: "Admin",
+      };
 
-      console.log("Register Response:", response);
+      const response = await registerUser(userData);
 
-      if (response?.isAuthenticated) {
+      if (response?.isAuthenticated || response?.token || response?.success) {
+        const currentUser = {
+          firstName: userData.firstName,
+          lastName: userData.lastName,
+          username: userData.username,
+          email: userData.email,
+          role: userData.role,
+        };
+
+        localStorage.setItem("currentUser", JSON.stringify(currentUser));
+
+        if (response?.token) {
+          localStorage.setItem("token", response.token);
+        }
+
         setRegisterSuccess("Account created successfully ✅");
 
         setTimeout(() => {
@@ -165,7 +180,9 @@ const Register = () => {
         </label>
 
         {registerError && <p className={styles.errorText}>{registerError}</p>}
-        {registerSuccess && <p className={styles.successText}>{registerSuccess}</p>}
+        {registerSuccess && (
+          <p className={styles.successText}>{registerSuccess}</p>
+        )}
 
         <Button
           type="submit"
